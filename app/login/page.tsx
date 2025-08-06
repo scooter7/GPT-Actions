@@ -1,15 +1,11 @@
 "use client";
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { useSupabase } from '@/app/components/AuthProvider';
 
 export default function LoginPage() {
-  const supabase = createClientComponentClient({
-    supabaseUrl: SUPABASE_URL,
-    supabaseKey: SUPABASE_PUBLISHABLE_KEY
-  });
+  const { supabase } = useSupabase();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

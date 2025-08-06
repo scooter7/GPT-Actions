@@ -54,17 +54,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   }, [session, pathname, router, loading]);
 
-  if (loading) {
-    return (
+  return (
+    <SupabaseContext.Provider value={{ supabase, session }}>
+      {loading ? (
         <div className="flex min-h-screen flex-col items-center justify-center p-24">
             <p>Loading...</p>
         </div>
-    );
-  }
-
-  return (
-    <SupabaseContext.Provider value={{ supabase, session }}>
-      {children}
+      ) : children}
     </SupabaseContext.Provider>
   );
 }
