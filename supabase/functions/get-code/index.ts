@@ -60,11 +60,11 @@ serve(async (req) => {
     }
 
     // Use Supabase's signInWithOtp to create user if not exists and send the OTP email
+    // Removed emailRedirectTo to ensure a 6-digit OTP is sent instead of a magic link.
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${Deno.env.get('NEXT_PUBLIC_SITE_URL')}/auth/callback`, // Correct redirect URL
       },
     });
 
