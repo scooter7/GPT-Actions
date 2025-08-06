@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useSupabase } from '../auth/SupabaseProvider';
-import { showSuccess, showError } from '../../utils/toast'; // Import toast utilities
 
 const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange }) => {
   const { supabase, session } = useSupabase();
@@ -44,9 +43,7 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
 
     if (insertError) {
       console.error('Error adding GPT:', insertError);
-      showError('Failed to add GPT. Please try again.');
     } else {
-      showSuccess('GPT added successfully!');
       setNewGPT({ name: '', description: '' });
       setShowAdd(false);
       await onGptChange(); // Refetch GPTs
@@ -67,9 +64,7 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
 
     if (deleteError) {
       console.error('Error deleting GPT:', deleteError);
-      showError('Failed to delete GPT. Please try again.');
     } else {
-      showSuccess('GPT deleted successfully!');
       await onGptChange(); // Refetch GPTs
       // If the deleted GPT was the selected one, clear selection or select first available
       if (selectedGPT && selectedGPT.id === id) {

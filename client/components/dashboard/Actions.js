@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSupabase } from '../auth/SupabaseProvider';
-import { showSuccess, showError } from '../../utils/toast'; // Import toast utilities
 
 const Toggle = ({ label, enabled, onToggle }) => (
   <div className="flex items-center justify-between py-3">
@@ -49,7 +48,7 @@ const Actions = ({ selectedGPT }) => {
 
   const handleToggle = async (action) => {
     if (!selectedGPT) {
-      showError("Please select a GPT first.");
+      console.error("Please select a GPT first.");
       return;
     }
 
@@ -64,10 +63,9 @@ const Actions = ({ selectedGPT }) => {
 
     if (error) {
       console.error('Error updating GPT settings:', error);
-      showError('Failed to update setting. Please try again.');
       setActions(prev => ({ ...prev, [action]: !prev[action] })); // Revert on error
     } else {
-      showSuccess('Setting updated successfully!');
+      console.log('Setting updated successfully!');
     }
     setLoading(false);
   };
