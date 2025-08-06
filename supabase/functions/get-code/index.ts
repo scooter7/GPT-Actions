@@ -62,15 +62,13 @@ serve(async (req) => {
 
     // Try to get the user by email, or create a new one if not found
     let user = null;
-    // Corrected: Removed .admin from supabase.auth.admin.getUserByEmail
-    const { data: existingUserData, error: getUserError } = await supabase.auth.getUserByEmail(email);
+    const { data: existingUserData, error: getUserError } = await supabase.auth.admin.getUserByEmail(email);
 
     if (getUserError) {
-      // If user not found (status 404), attempt to create a new user
+      // If user not found, attempt to create a new user
       if (getUserError.status === 404) {
         console.log(`User with email ${email} not found, attempting to create.`);
-        // Corrected: Removed .admin from supabase.auth.admin.createUser
-        const { data: newUserData, error: createUserError } = await supabase.auth.createUser({
+        const { data: newUserData, error: createUserError } = await supabase.auth.admin.createUser({
           email: email,
           email_confirm: true, // Automatically confirm email for this flow
         });
