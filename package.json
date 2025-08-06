@@ -2,6 +2,7 @@
   "name": "gpt-auth-root",
   "private": true,
   "scripts": {
-    "dev": "npm run dev --prefix client"
+    "dev": "npm run dev --prefix client",
+    "postinstall": "npm install --prefix client"
   }
 }
