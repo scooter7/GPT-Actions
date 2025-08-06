@@ -2,7 +2,7 @@
 import Image from 'next/image';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
-  const navItems = ['Instructions', 'Users', 'Analytics', 'Actions'];
+  const navItems = ['Instructions', 'Test Instructions', 'Users', 'Analytics', 'Actions'];
 
   return (
     <aside className="w-64 bg-[#161b22] p-6 flex-flex-col hidden md:flex">

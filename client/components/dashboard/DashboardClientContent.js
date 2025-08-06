@@ -5,6 +5,7 @@ import { useSupabase } from '../auth/SupabaseProvider';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Instructions from './Instructions';
+import SimpleTestInstructions from './SimpleTestInstructions';
 import Users from './Users';
 import Analytics from './Analytics';
 import Actions from './Actions';
@@ -71,6 +72,8 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
     switch (activeTab) {
       case 'Instructions':
         return <Instructions selectedGPT={selectedGPT} />;
+      case 'Test Instructions':
+        return <SimpleTestInstructions selectedGPT={selectedGPT} />;
       case 'Users':
         return <Users selectedGPT={selectedGPT} />;
       case 'Analytics':
