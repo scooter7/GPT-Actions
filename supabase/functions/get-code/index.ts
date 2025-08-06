@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'npm:@supabase/supabase-js@latest' // Using latest npm version
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0' // Using specific esm.sh version
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,8 +26,10 @@ serve(async (req) => {
     console.log('Supabase auth keys:', Object.keys(supabase.auth));
     console.log('Type of supabase.auth.admin:', typeof supabase.auth.admin);
     if (supabase.auth.admin) {
-        console.log('Supabase auth admin keys:', Object.keys(supabase.auth.admin));
+        console.log('Supabase auth admin keys (Object.keys):', Object.keys(supabase.auth.admin));
+        console.log('Supabase auth admin properties (getOwnPropertyNames):', Object.getOwnPropertyNames(supabase.auth.admin));
         console.log('Type of supabase.auth.admin.getUserByEmail:', typeof supabase.auth.admin.getUserByEmail);
+        console.log('Type of supabase.auth.admin.sendOtp:', typeof supabase.auth.admin.sendOtp);
     }
     // --- End Detailed Debugging Logs ---
 
