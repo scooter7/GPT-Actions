@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './integrations/supabase/client';
 import CreateGPTForm from './components/CreateGPTForm';
+import GPTDetails from './components/GPTDetails';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -11,6 +12,7 @@ function App() {
   const [authError, setAuthError] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [selectedGPT, setSelectedGPT] = useState(null);
 
   useEffect(() => {
     // Check for an existing session
@@ -128,6 +130,15 @@ function App() {
     setGpts([newGpt, ...gpts]);
   };
 
+  const copyApiKey = (clientId) => {
+    navigator.clipboard.writeText(clientId);
+    // You could add a toast notification here
+  };
+
+  const viewGptDetails = (gpt) => {
+    setSelectedGPT(gpt);
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-slate-200">
@@ -231,10 +242,16 @@ function App() {
                     <h4 className="font-bold">{gpt.name}</h4>
                     <p className="text-gray-600">{gpt.description || 'No description'}</p>
                     <div className="mt-2 flex gap-2">
-                      <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                      <button 
+                        onClick={() => viewGptDetails(gpt)}
+                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
                         View Details
                       </button>
-                      <button className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
+                      <button 
+                        onClick={() => copyApiKey(gpt.client_id)}
+                        className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
+                      >
                         Copy API Key
                       </button>
                     </div>
@@ -245,6 +262,13 @@ function App() {
           </div>
           
           <CreateGPTForm onGptCreated={handleGptCreated} />
+          
+          {selectedGPT && (
+            <GPTDetails 
+              gpt={selectedGPT} 
+              onClose={() => setSelectedGPT(null)} 
+            />
+          )}
         </div>
       )}
     </main>

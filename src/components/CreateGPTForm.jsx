@@ -26,12 +26,20 @@ function CreateGPTForm({ onGptCreated }) {
         'IMDb Movies': false,
       };
 
+      // Generate UUIDs for client_id and client_secret
+      // Note: In a real app, you'd want to generate these on the server side
+      // for better security, but for this demo we'll use crypto.randomUUID()
+      const clientId = crypto.randomUUID();
+      const clientSecret = crypto.randomUUID();
+
       const { data, error } = await supabase
         .from('gpts')
         .insert({
           name,
           description,
           settings: defaultSettings,
+          client_id: clientId,
+          client_secret: clientSecret
         })
         .select()
         .single();
