@@ -11,6 +11,7 @@ import Analytics from './Analytics';
 import Actions from './Actions';
 import GPTManager from './GPTManager';
 import { Loader2 } from 'lucide-react';
+import ConnectivityTest from './ConnectivityTest';
 
 export default function DashboardClientContent({ initialGpts, initialSelectedGPT }) {
   const { supabase } = useSupabase();
@@ -62,7 +63,7 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
         </div>
       );
     }
-    if (!selectedGPT) {
+    if (!selectedGPT && activeTab !== 'Connectivity Test') {
       return (
         <div className="flex flex-col items-center justify-center h-full text-gray-400">
           <p className="mb-4 text-center">No GPT selected. Click <span className="text-blue-400 underline cursor-pointer" onClick={() => setShowGPTManager(true)}>My GPTs</span> to add your first GPT.</p>
@@ -74,6 +75,8 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
         return <Instructions selectedGPT={selectedGPT} />;
       case 'Test Instructions':
         return <SimpleTestInstructions selectedGPT={selectedGPT} />;
+      case 'Connectivity Test':
+        return <ConnectivityTest />;
       case 'Users':
         return <Users selectedGPT={selectedGPT} />;
       case 'Analytics':
