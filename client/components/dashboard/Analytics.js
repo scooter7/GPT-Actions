@@ -20,6 +20,8 @@ const Analytics = ({ selectedGPT }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [testLoading, setTestLoading] = useState(false);
 
   const fetchAnalytics = useCallback(async () => {
     if (!selectedGPT) {
@@ -70,6 +72,43 @@ const Analytics = ({ selectedGPT }) => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
+  // Test Track Button Handler
+  const handleTestTrack = async () => {
+    setTestResult(null);
+    setTestLoading(true);
+    try {
+      const apiKey = selectedGPT?.client_id;
+      if (!apiKey) {
+        setTestResult({ type: 'error', message: 'No API key found for this GPT.' });
+        setTestLoading(false);
+        return;
+      }
+      const response = await fetch('https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_email: 'test@example.com',
+          user_message: 'This is a test message from the dashboard.',
+          assistant_response: 'This is a test assistant response.'
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTestResult({ type: 'success', message: 'Test log sent successfully! Log ID: ' + (data.log_id || 'N/A') });
+        // Refresh analytics to show the new log
+        fetchAnalytics();
+      } else {
+        setTestResult({ type: 'error', message: data.error || 'Unknown error' });
+      }
+    } catch (err) {
+      setTestResult({ type: 'error', message: err.message });
+    }
+    setTestLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -85,7 +124,21 @@ const Analytics = ({ selectedGPT }) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Analytics {selectedGPT && <span className="text-blue-400">({selectedGPT.name})</span>}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">Analytics {selectedGPT && <span className="text-blue-400">({selectedGPT.name})</span>}</h2>
+        <button
+          onClick={handleTestTrack}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
+          disabled={testLoading || !selectedGPT}
+        >
+          {testLoading ? 'Sending...' : 'Send Test Track Log'}
+        </button>
+      </div>
+      {testResult && (
+        <div className={`mb-4 px-4 py-2 rounded ${testResult.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>
+          {testResult.message}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard title="Total Users" value={stats.totalUsers} icon={<Users size={24} />} />
         <StatCard title="Total Messages" value={stats.totalConversations} icon={<MessageSquare size={24} />} />
