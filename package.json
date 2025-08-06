@@ -4,6 +4,8 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.53.0",
+    "@types/react-dom": "^19.1.7",
+    "@types/scheduler": "^0.26.0",
     "axios": "^1.6.2",
     "lucide-react": "^0.417.0",
     "next": "14.0.3",
