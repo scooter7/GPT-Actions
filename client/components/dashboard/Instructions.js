@@ -142,10 +142,20 @@ const Instructions = ({ selectedGPT }) => {
       <div className="space-y-8 text-gray-300 max-w-4xl">
         <div>
           <h3 className="font-semibold text-white mb-2">1. Add this to your GPT's instructions</h3>
-          <p className="text-gray-400">To keep track of your users and their queries, the GPT must follow these steps. You can modify the behavior as needed.</p>
+          <p className="text-gray-400">To ensure proper authentication and tracking, your GPT MUST follow these steps precisely:</p>
           <div className="mt-2 p-4 bg-[#161b22] border border-gray-700 rounded-lg text-sm space-y-4">
-            <p>Start with authenticating the user as the first step. The authentication flow begins with the system prompting the user for their email address. After the email is submitted, the system makes an API call to 'GetCode', sending a unique verification code to the user's email.Then the system follow the instruction provided by the API Responses.</p>
-            <p>After authenticating the user, you MUST first perform the 'LogMessages' action for every message. Never provide an answer without invoking the LogMessages action.</p>
+            <p>
+              **Authentication is the FIRST and MANDATORY step.** You MUST always begin by asking the user for their email address.
+              Once you have the user's email, immediately call the `GetCode` action with that email.
+              Then, instruct the user to check their email for a 6-digit verification code.
+              After the user provides the code, call the `VerifyCode` action with both the email and the code.
+              Do NOT proceed with any other actions or provide any responses until the user is successfully authenticated.
+            </p>
+            <p>
+              After successful authentication, you MUST perform the `LogMessages` action for every subsequent user message.
+              Always include the user's email, their message, and your assistant's response in the `LogMessages` call.
+              Never provide an answer without first invoking the `LogMessages` action.
+            </p>
           </div>
         </div>
         <div>
