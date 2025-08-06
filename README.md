@@ -21,41 +21,62 @@
 ### Stack
 
 - Next.js
-- OpenAI
+- Supabase
 - Tailwind
+- OpenAI
 - Flask
-- Sqlalchemy
+
+---
+
+## Getting Started
 
 ### Run the project locally
 
-Minimum requirements to run the projects locally
-
+Minimum requirements to run the project locally:
 - Node.js v18
-- OpenAI API Key
 - Python3
+- Supabase Account
+
+**1. Frontend (Next.js)**
+
+First, set up your environment variables. Copy the `.env.example` file to a new file named `.env.local`:
 
 ```shell
+cp .env.example .env.local
+```
 
-## Client
+Open `.env.local` and add your Supabase project's **Publishable key (anon key)**.
 
-cd client
+Then, install dependencies and run the development server:
 
+```shell
 npm install
+npm run dev
+```
 
-npm run build
+**2. Backend (Flask - Optional)**
 
-npm start
+The Python server is separate and can be run if needed for custom backend logic.
 
-## Server
-
-cd ../server
-
+```shell
+cd server
 pip install -r requirements.txt
-
 python webserver.py
 ```
 
-Use ngrok to test on a https endpoint
+---
+
+## Deploy to Vercel
+
+Deploying your GPT Auth frontend is easy with Vercel.
+
+1.  **Push to GitHub**: Make sure your code is pushed to a GitHub repository.
+2.  **Import Project**: Go to your Vercel dashboard and import the GitHub repository.
+3.  **Configure Project**: Vercel will automatically detect that it's a Next.js project. The default settings should work perfectly.
+4.  **Add Environment Variables**: In the project settings on Vercel, navigate to "Environment Variables" and add the following:
+    -   `NEXT_PUBLIC_SUPABASE_URL`: Your project's Supabase URL.
+    -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your project's publishable anon key.
+5.  **Deploy**: Click the "Deploy" button. Vercel will build and deploy your site.
 
 ### Hosted version of GPT Auth
 
