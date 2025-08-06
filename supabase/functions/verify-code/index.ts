@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0' // Changed to a specific esm.sh version
-import { SignJWT } from 'https://esm.sh/jose@5.6.3'
+import { createClient } from 'npm:@supabase/supabase-js@latest' // Using latest npm version
+import { SignJWT } from 'npm:jose@5.6.3' // Using npm version for consistency
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,14 +18,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // --- Debugging Logs ---
+    // --- Detailed Debugging Logs ---
     console.log('SUPABASE_URL length:', Deno.env.get('SUPABASE_URL')?.length);
     console.log('SUPABASE_SERVICE_ROLE_KEY length:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.length);
+    console.log('Supabase client keys:', Object.keys(supabase));
+    console.log('Supabase auth keys:', Object.keys(supabase.auth));
     console.log('Type of supabase.auth.admin:', typeof supabase.auth.admin);
     if (supabase.auth.admin) {
+        console.log('Supabase auth admin keys:', Object.keys(supabase.auth.admin));
         console.log('Type of supabase.auth.admin.getUserByEmail:', typeof supabase.auth.admin.getUserByEmail);
     }
-    // --- End Debugging Logs ---
+    // --- End Detailed Debugging Logs ---
 
     // Authenticate the request using the API key from the Authorization header
     const authHeader = req.headers.get('Authorization')
