@@ -64,7 +64,7 @@ serve(async (req) => {
       email: email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/callback`, // A dummy redirect URL
+        emailRedirectTo: `${Deno.env.get('NEXT_PUBLIC_SITE_URL')}/auth/callback`, // Correct redirect URL
       },
     });
 
