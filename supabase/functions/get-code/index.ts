@@ -13,9 +13,22 @@ serve(async (req) => {
   }
 
   try {
+    // Create a Supabase client with the service role key to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
+    // Create a regular Supabase client for auth operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_ANON_KEY')!
     )
 
     // Authenticate the request using the API key from the Authorization header
@@ -36,7 +49,7 @@ serve(async (req) => {
     }
 
     // Find the GPT associated with the API key (client_id)
-    const { data: gpt, error: gptError } = await supabase
+    const { data: gpt, error: gptError } = await supabaseAdmin
       .from('gpts')
       .select('id')
       .eq('client_id', apiKey) 

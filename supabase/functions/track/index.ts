@@ -15,9 +15,15 @@ serve(async (req) => {
 
   try {
     // Create a Supabase client with the service role key to bypass RLS
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     )
 
     // Authenticate the request using the API key from the Authorization header
@@ -38,7 +44,7 @@ serve(async (req) => {
     }
 
     // Find the GPT associated with the API key (now using client_id)
-    const { data: gpt, error: gptError } = await supabase
+    const { data: gpt, error: gptError } = await supabaseAdmin
       .from('gpts')
       .select('id')
       .eq('client_id', apiKey) 
@@ -66,7 +72,7 @@ serve(async (req) => {
     }
 
     // Find an existing user or create a new one for this GPT
-    const { data: gptUser, error: userError } = await supabase
+    const { data: gptUser, error: userError } = await supabaseAdmin
       .from('gpt_users')
       .upsert({ gpt_id: gpt.id, email: user_email }, { onConflict: 'gpt_id,email' })
       .select('id')
@@ -81,7 +87,7 @@ serve(async (req) => {
     }
 
     // Insert the new conversation log into the database
-    const { error: logError } = await supabase.from('gpt_logs').insert({
+    const { error: logError } = await supabaseAdmin.from('gpt_logs').insert({
       gpt_id: gpt.id,
       gpt_user_id: gptUser.id,
       user_message: safeUserMessage,
