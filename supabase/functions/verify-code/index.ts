@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'npm:@supabase/supabase-js@2.43.0' // Changed to npm: specifier
+import { createClient } from 'npm:@supabase/supabase-js@2.43.0'
 import { SignJWT } from 'https://esm.sh/jose@5.6.3'
 
 const corsHeaders = {
@@ -17,6 +17,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+
+    // --- Debugging Logs ---
+    console.log('SUPABASE_URL length:', Deno.env.get('SUPABASE_URL')?.length);
+    console.log('SUPABASE_SERVICE_ROLE_KEY length:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.length);
+    console.log('Type of supabase.auth.admin:', typeof supabase.auth.admin);
+    if (supabase.auth.admin) {
+        console.log('Type of supabase.auth.admin.getUserByEmail:', typeof supabase.auth.admin.getUserByEmail);
+    }
+    // --- End Debugging Logs ---
 
     // Authenticate the request using the API key from the Authorization header
     const authHeader = req.headers.get('Authorization')
