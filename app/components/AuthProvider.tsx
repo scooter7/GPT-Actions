@@ -12,10 +12,17 @@ type SupabaseContextType = {
 
 const SupabaseContext = createContext<SupabaseContextType | null>(null);
 
+// --- TEMPORARY HARDCODED VALUES FOR DEBUGGING ---
+// This is not a permanent solution. We are doing this to diagnose
+// why the environment variables might not be loading correctly.
+const SUPABASE_URL = "https://qrhafhfqdjcrqsxnkaij.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
+// --- END TEMPORARY VALUES ---
+
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase] = useState(() => createClientComponentClient({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    supabaseUrl: SUPABASE_URL,
+    supabaseKey: SUPABASE_ANON_KEY
   }));
 
   const router = useRouter();
