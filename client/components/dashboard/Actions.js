@@ -39,8 +39,10 @@ const Actions = ({ selectedGPT }) => {
 
   useEffect(() => {
     if (selectedGPT) {
-      // Merge default actions with saved settings, prioritizing saved settings
-      setActions({ ...defaultActions, ...(selectedGPT.settings || {}) });
+      // Merge: database settings take precedence, fallback to defaults only if missing
+      const dbSettings = selectedGPT.settings || {};
+      const merged = { ...defaultActions, ...dbSettings };
+      setActions(merged);
     } else {
       setActions(defaultActions);
     }
@@ -65,7 +67,7 @@ const Actions = ({ selectedGPT }) => {
       console.error('Error updating GPT settings:', error);
       setActions(prev => ({ ...prev, [action]: !prev[action] })); // Revert on error
     } else {
-      console.log('Setting updated successfully!');
+      // No need to do anything, optimistic update is fine
     }
     setLoading(false);
   };
