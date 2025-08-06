@@ -59,27 +59,27 @@ serve(async (req) => {
       })
     }
 
-    // Use Supabase's signInWithOtp to create user if not exists and send the OTP email
-    // Removed emailRedirectTo to ensure a 6-digit OTP is sent instead of a magic link.
+    // Use Supabase's signInWithOtp to create user if not exists and send the magic link email
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
         shouldCreateUser: true,
+        emailRedirectTo: `${Deno.env.get('NEXT_PUBLIC_SITE_URL')}/auth/callback`, // Redirect to your app's callback
       },
     });
 
     if (otpError) {
-      console.error('Error sending OTP:', otpError);
-      return new Response(JSON.stringify({ error: `Failed to send verification code: ${otpError.message}` }), {
+      console.error('Error sending magic link:', otpError);
+      return new Response(JSON.stringify({ error: `Failed to send magic link: ${otpError.message}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
-    console.log(`Supabase OTP sent to ${email}.`);
+    console.log(`Supabase magic link sent to ${email}.`);
 
     // Return a success response
-    return new Response(JSON.stringify({ message: 'Verification code sent successfully' }), {
+    return new Response(JSON.stringify({ message: 'Magic link sent successfully' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
