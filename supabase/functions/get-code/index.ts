@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'npm:@supabase/supabase-js@latest'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,12 +59,11 @@ serve(async (req) => {
       })
     }
 
-    // Use Supabase's signInWithOtp to create user if not exists and send the 6-digit OTP
+    // Use Supabase's signInWithOtp to send a 6-digit OTP
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
         shouldCreateUser: true,
-        // Removed emailRedirectTo to ensure OTP is sent, not a magic link
       },
     });
 
@@ -85,7 +84,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Unhandled error in get-code:', error)
+    console.error('Unhandled error in get-code:', error);
     return new Response(JSON.stringify({ error: 'An internal error occurred' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
