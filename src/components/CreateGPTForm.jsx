@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../integrations/supabase/client';
 
-function CreateGPTForm({ onGptCreated }) {
+function CreateGPTForm({ onGptCreated, onCancel }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,8 +26,6 @@ function CreateGPTForm({ onGptCreated }) {
       };
 
       // Generate UUIDs for client_id and client_secret
-      // Note: In a real app, you'd want to generate these on the server side
-      // for better security, but for this demo we'll use crypto.randomUUID()
       const clientId = crypto.randomUUID();
       const clientSecret = crypto.randomUUID();
 
@@ -49,7 +46,6 @@ function CreateGPTForm({ onGptCreated }) {
       // Reset form
       setName('');
       setDescription('');
-      setShowForm(false);
       
       // Notify parent component
       if (onGptCreated) onGptCreated(data);
@@ -61,74 +57,59 @@ function CreateGPTForm({ onGptCreated }) {
     }
   };
 
-  if (!showForm) {
-    return (
-      <div>
-        <h3 className="text-xl font-semibold mb-3">Create a New GPT</h3>
-        <p className="text-gray-500 mb-4">
-          Create a new GPT to start managing authentication for your custom GPT.
-        </p>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
-        >
-          Create GPT
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-3">Create a New GPT</h3>
+      <h3 className="text-lg font-semibold mb-3">Create New GPT</h3>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
           {error}
         </div>
       )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-gray-700 mb-1">GPT Name</label>
+          <label htmlFor="name" className="block text-gray-700 mb-1 text-sm">GPT Name</label>
           <input
             id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             required
           />
         </div>
         
         <div>
-          <label htmlFor="description" className="block text-gray-700 mb-1">Description (optional)</label>
+          <label htmlFor="description" className="block text-gray-700 mb-1 text-sm">Description (optional)</label>
           <textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            rows="3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            rows="2"
           />
         </div>
         
         <div className="flex gap-2">
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition"
             disabled={loading}
           >
             {loading ? 'Creating...' : 'Create GPT'}
           </button>
           
-          <button
-            type="button"
-            onClick={() => setShowForm(false)}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
-            disabled={loading}
-          >
-            Cancel
-          </button>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </form>
     </div>
