@@ -1,5 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSupabase } from '../auth/SupabaseProvider';
+import { showSuccess, showError } from '../../utils/toast'; // Import toast utilities
 
 const Toggle = ({ label, enabled, onToggle }) => (
   <div className="flex items-center justify-between py-3">
@@ -20,7 +22,12 @@ const Toggle = ({ label, enabled, onToggle }) => (
 );
 
 const Actions = ({ selectedGPT }) => {
-  const [actions, setActions] = useState({
+  const { supabase } = useSupabase();
+  const [actions, setActions] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  // Default actions and their initial states
+  const defaultActions = {
     'Email Verification': true,
     'User Message Tracking': false,
     'Weather Assistance': true,
@@ -29,10 +36,40 @@ const Actions = ({ selectedGPT }) => {
     'Current Time': true,
     'Stock Prices': true,
     'IMDb Movies': false,
-  });
+  };
 
-  const handleToggle = (action) => {
-    setActions(prev => ({ ...prev, [action]: !prev[action] }));
+  useEffect(() => {
+    if (selectedGPT) {
+      // Merge default actions with saved settings, prioritizing saved settings
+      setActions({ ...defaultActions, ...(selectedGPT.settings || {}) });
+    } else {
+      setActions(defaultActions);
+    }
+  }, [selectedGPT]);
+
+  const handleToggle = async (action) => {
+    if (!selectedGPT) {
+      showError("Please select a GPT first.");
+      return;
+    }
+
+    setLoading(true);
+    const newActions = { ...actions, [action]: !actions[action] };
+    setActions(newActions); // Optimistic update
+
+    const { error } = await supabase
+      .from('gpts')
+      .update({ settings: newActions })
+      .eq('id', selectedGPT.id);
+
+    if (error) {
+      console.error('Error updating GPT settings:', error);
+      showError('Failed to update setting. Please try again.');
+      setActions(prev => ({ ...prev, [action]: !prev[action] })); // Revert on error
+    } else {
+      showSuccess('Setting updated successfully!');
+    }
+    setLoading(false);
   };
 
   return (
@@ -45,6 +82,7 @@ const Actions = ({ selectedGPT }) => {
             label={label}
             enabled={enabled}
             onToggle={() => handleToggle(label)}
+            disabled={loading} // Disable toggles during save
           />
         ))}
       </div>

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useSupabase } from '../auth/SupabaseProvider';
+import { showSuccess, showError } from '../../utils/toast'; // Import toast utilities
 
 const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange }) => {
   const { supabase, session } = useSupabase();
@@ -9,6 +10,18 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
   const [newGPT, setNewGPT] = useState({ name: '', description: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Default actions for new GPTs
+  const defaultSettings = {
+    'Email Verification': true,
+    'User Message Tracking': false,
+    'Weather Assistance': true,
+    'YouTube Summary': true,
+    'Website Scraper': false,
+    'Current Time': true,
+    'Stock Prices': true,
+    'IMDb Movies': false,
+  };
 
   const handleAdd = async () => {
     if (!newGPT.name.trim()) {
@@ -24,14 +37,16 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
         name: newGPT.name,
         description: newGPT.description,
         user_id: session.user.id,
+        settings: defaultSettings, // Initialize with default settings
       })
       .select()
       .single();
 
     if (insertError) {
       console.error('Error adding GPT:', insertError);
-      setError('Failed to add GPT. Please try again.');
+      showError('Failed to add GPT. Please try again.');
     } else {
+      showSuccess('GPT added successfully!');
       setNewGPT({ name: '', description: '' });
       setShowAdd(false);
       await onGptChange(); // Refetch GPTs
@@ -52,9 +67,14 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
 
     if (deleteError) {
       console.error('Error deleting GPT:', deleteError);
-      setError('Failed to delete GPT. Please try again.');
+      showError('Failed to delete GPT. Please try again.');
     } else {
+      showSuccess('GPT deleted successfully!');
       await onGptChange(); // Refetch GPTs
+      // If the deleted GPT was the selected one, clear selection or select first available
+      if (selectedGPT && selectedGPT.id === id) {
+        setSelectedGPT(null);
+      }
     }
     setLoading(false);
   };
