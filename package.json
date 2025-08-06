@@ -1,16 +1,8 @@
 {
-  "name": "gpt-auth-root",
-  "private": true,
-  "scripts": {
-    "dev": "npm run dev --prefix client -- --port 32100",
-    "build": "npm run build --prefix client",
-    "start": "npm run start --prefix client"
-  },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
-    "react-hot-toast": "^2.5.2",
     "typescript": "^5.9.2"
   }
 }

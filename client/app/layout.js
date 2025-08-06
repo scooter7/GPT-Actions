@@ -42,8 +42,9 @@ export default async function RootLayout({ children }) {
     <html lang="en">
       <body className={`${inter.className} bg-[#0d1117] text-white`}>
         <SupabaseProvider session={session} profile={profile}>
-          <ToastProvider /> {/* Add ToastProvider here */}
-          {children}
+          <ToastProvider> {/* Now wrapping children */}
+            {children}
+          </ToastProvider>
         </SupabaseProvider>
       </body>
     </html>
