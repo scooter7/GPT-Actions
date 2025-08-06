@@ -2,21 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../auth/SupabaseProvider';
 import { Loader2 } from 'lucide-react';
-
-// Helper component to handle client-side date localization
-const LocalizedDate = ({ dateString }) => {
-  const [formattedDate, setFormattedDate] = useState(dateString);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-    if (dateString) {
-      setFormattedDate(new Date(dateString).toLocaleString());
-    }
-  }, [dateString]);
-
-  return isClient ? formattedDate : dateString;
-};
+import LocalizedDate from './LocalizedDate';
 
 const Users = ({ selectedGPT }) => {
   const { supabase } = useSupabase();
