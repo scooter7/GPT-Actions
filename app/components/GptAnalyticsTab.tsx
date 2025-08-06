@@ -10,7 +10,8 @@ type GptLog = {
   user_message: string | null;
   assistant_response: string | null;
   created_at: string;
-  gpt_users: { email: string } | null;
+  // The Supabase client returns an array for this relationship, so we'll type it as such.
+  gpt_user: { email: string }[] | null;
 };
 
 interface GptAnalyticsTabProps {
@@ -27,7 +28,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
       setLoading(true);
       const { data, error } = await supabase
         .from('gpt_logs')
-        .select('id, user_message, assistant_response, created_at, gpt_users(email)')
+        .select('id, user_message, assistant_response, created_at, gpt_user:gpt_users(email)')
         .eq('gpt_id', gptId)
         .order('created_at', { ascending: false })
         .limit(100);
@@ -72,7 +73,8 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
               <TableBody>
                 {logs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell>{log.gpt_users?.email || 'Unknown'}</TableCell>
+                    {/* Access the first element of the array to get the user's email. */}
+                    <TableCell>{log.gpt_user?.[0]?.email || 'Unknown'}</TableCell>
                     <TableCell className="max-w-xs truncate">{log.user_message}</TableCell>
                     <TableCell className="max-w-xs truncate">{log.assistant_response}</TableCell>
                     <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
