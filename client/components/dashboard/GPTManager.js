@@ -35,14 +35,15 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
       .insert({
         name: newGPT.name,
         description: newGPT.description,
-        user_id: session.user.id,
-        settings: defaultSettings, // Initialize with default settings
+        // user_id is no longer needed here; the database will set it automatically
+        settings: defaultSettings,
       })
       .select()
       .single();
 
     if (insertError) {
       console.error('Error adding GPT:', insertError);
+      setError(insertError.message); // Show the actual error
     } else {
       setNewGPT({ name: '', description: '' });
       setShowAdd(false);
