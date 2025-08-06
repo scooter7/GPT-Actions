@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run dev --prefix client",
-    "start": "npm start --prefix client",
-    "build": "npm run build --prefix client"
+    "dev": "pnpm --dir client dev",
+    "start": "pnpm --dir client start",
+    "build": "pnpm --dir client build"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
