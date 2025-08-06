@@ -4,6 +4,8 @@ import { useSupabase } from '../auth/SupabaseProvider';
 import { Loader2, MessageSquare, Users, BarChart3 } from 'lucide-react';
 import LocalizedDate from './LocalizedDate';
 
+console.log("--- Loading Analytics.js component (v2 with Test Button) ---");
+
 const StatCard = ({ title, value, icon }) => (
   <div className="bg-[#161b22] border border-gray-700 p-4 rounded-lg flex items-center gap-4">
     <div className="bg-gray-700 p-3 rounded-lg">{icon}</div>
