@@ -14,7 +14,6 @@ type SupabaseContextType = {
 const SupabaseContext = createContext<SupabaseContextType | null>(null);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Use useState with an initializer function to ensure the client is created only once.
   const [supabase] = useState(() => 
     createClientComponentClient({
       supabaseUrl: SUPABASE_URL,
@@ -28,15 +27,30 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoading(false);
+    const getInitialSession = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error fetching session, signing out:", error.message);
+          await supabase.auth.signOut();
+          setSession(null);
+        } else {
+          setSession(initialSession);
+        }
+      } catch (e) {
+        console.error("Exception fetching session, signing out:", e);
+        await supabase.auth.signOut();
+        setSession(null);
+      } finally {
+        setLoading(false);
+      }
     };
-    getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
     });
 
     return () => {
@@ -62,7 +76,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     <SupabaseContext.Provider value={{ supabase, session }}>
       {loading ? (
         <div className="flex min-h-screen flex-col items-center justify-center p-24">
-            <p>Loading...</p>
+            <p>Loading session...</p>
         </div>
       ) : children}
     </SupabaseContext.Provider>
