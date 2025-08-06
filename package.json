@@ -1,4 +1,12 @@
 {
+  "name": "gpt-auth-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix client",
+    "start": "npm start --prefix client",
+    "build": "npm run build --prefix client"
+  },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/auth-ui-react": "^0.4.7",
