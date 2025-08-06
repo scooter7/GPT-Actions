@@ -58,7 +58,8 @@ function Instructions({ gpt }) {
         "type": "http",
         "scheme": "bearer"
       }
-    }
+    },
+    "schemas": {}
   },
   "security": [
     {
