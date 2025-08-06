@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
 
 function Analytics({ gpt }) {
@@ -10,15 +10,16 @@ function Analytics({ gpt }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [testResult, setTestResult] = useState(null);
+  const [testLoading, setTestLoading] = useState(false);
 
-  useEffect(() => {
-    if (gpt) {
-      fetchAnalytics();
+  const fetchAnalytics = useCallback(async () => {
+    if (!gpt) {
+      setLoading(false);
+      return;
     }
-  }, [gpt]);
-
-  const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
       // Get user count
       const { count: userCount, error: userError } = await supabase
@@ -54,6 +55,45 @@ function Analytics({ gpt }) {
     } finally {
       setLoading(false);
     }
+  }, [gpt]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleTestTrack = async () => {
+    setTestResult(null);
+    setTestLoading(true);
+    try {
+      const apiKey = gpt?.client_id;
+      if (!apiKey) {
+        setTestResult({ type: 'error', message: 'No API key found for this GPT.' });
+        return;
+      }
+      const response = await fetch('https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_email: 'test@example.com',
+          user_message: 'This is a test message from the dashboard.',
+          assistant_response: 'This is a test assistant response.'
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTestResult({ type: 'success', message: 'Test log sent successfully! Log ID: ' + (data.log_id || 'N/A') });
+        fetchAnalytics(); // Refresh analytics
+      } else {
+        setTestResult({ type: 'error', message: data.error || 'Unknown error' });
+      }
+    } catch (err) {
+      setTestResult({ type: 'error', message: err.message });
+    } finally {
+      setTestLoading(false);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -70,7 +110,22 @@ function Analytics({ gpt }) {
 
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-4">Analytics</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold">Analytics</h3>
+        <button
+          onClick={handleTestTrack}
+          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition disabled:opacity-50"
+          disabled={testLoading || !gpt}
+        >
+          {testLoading ? 'Sending...' : 'Send Test Track Log'}
+        </button>
+      </div>
+
+      {testResult && (
+        <div className={`mb-4 px-4 py-2 rounded text-sm ${testResult.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'}`}>
+          {testResult.message}
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">

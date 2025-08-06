@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import Instructions from './Instructions';
 import SimpleTestInstructions from './SimpleTestInstructions';
 import Users from './Users';
-import AnalyticsPanel from './AnalyticsPanel';
+import Analytics from './Analytics';
 import Actions from './Actions';
 import GPTManager from './GPTManager';
 import { Loader2 } from 'lucide-react';
@@ -80,7 +80,7 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
       case 'Users':
         return <Users selectedGPT={selectedGPT} />;
       case 'Analytics':
-        return <AnalyticsPanel selectedGPT={selectedGPT} />;
+        return <Analytics selectedGPT={selectedGPT} />;
       case 'Actions':
         return <Actions selectedGPT={selectedGPT} />;
       default:
@@ -95,7 +95,7 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
         <Header onMyGPTs={() => setShowGPTManager(true)} />
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {renderContent()}
-        main>
+        </main>
       </div>
       {showGPTManager && (
         <GPTManager
