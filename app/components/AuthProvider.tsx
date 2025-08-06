@@ -14,10 +14,14 @@ type SupabaseContextType = {
 const SupabaseContext = createContext<SupabaseContextType | null>(null);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClientComponentClient({
-    supabaseUrl: SUPABASE_URL,
-    supabaseKey: SUPABASE_PUBLISHABLE_KEY
-  });
+  // Use useState with an initializer function to ensure the client is created only once.
+  const [supabase] = useState(() => 
+    createClientComponentClient({
+      supabaseUrl: SUPABASE_URL,
+      supabaseKey: SUPABASE_PUBLISHABLE_KEY
+    })
+  );
+
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
