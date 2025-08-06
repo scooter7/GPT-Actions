@@ -151,6 +151,24 @@ IMPORTANT: When calling the LogMessages action, always include:
 2. user_message - The current message from the user
 3. assistant_response - Your PREVIOUS response (not the one you're about to send)`;
 
+  const exampleCode = `// Example of how to call LogMessages in your GPT
+// This should be done at the beginning of EVERY user interaction after authentication
+
+// First, get the user's message and your previous response
+const userMessage = "How can I use this GPT?"; // The current message from the user
+const previousResponse = "I'm here to help you with..."; // Your previous response
+const userEmail = "user@example.com"; // The authenticated user's email
+
+// Then call LogMessages with this data
+const result = await LogMessages({
+  user_email: userEmail,
+  user_message: userMessage,
+  assistant_response: previousResponse
+});
+
+// Only after logging, provide your new response
+// ...your new response logic here...`;
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Instructions {selectedGPT && <span className="text-blue-400">({selectedGPT.name})</span>}</h2>
@@ -173,6 +191,18 @@ IMPORTANT: When calling the LogMessages action, always include:
           <h3 className="font-semibold text-white mb-2">3. Add the OpenAPI Schema</h3>
           <p className="text-gray-400">Create a new action and paste this schema into the editor. The server URL is already configured for you.</p>
           <CodeBlock>{schema}</CodeBlock>
+        </div>
+        <div>
+          <h3 className="font-semibold text-white mb-2">4. Troubleshooting</h3>
+          <p className="text-gray-400 mb-2">If you're not seeing logs in the Analytics tab, make sure your GPT is correctly calling the LogMessages action:</p>
+          <ul className="list-disc list-inside text-gray-400 mb-4 space-y-2">
+            <li>Verify that you've added the API key exactly as shown above</li>
+            <li>Ensure the OpenAPI schema is correctly pasted into your GPT's configuration</li>
+            <li>Check that your GPT is calling LogMessages at the beginning of EVERY user interaction</li>
+            <li>Make sure you're passing the correct parameters to LogMessages</li>
+          </ul>
+          <p className="text-gray-400 mb-2">Example of how to call LogMessages in your GPT:</p>
+          <CodeBlock>{exampleCode}</CodeBlock>
         </div>
       </div>
     </div>
