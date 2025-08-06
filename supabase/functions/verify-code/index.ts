@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.0/dist/module/index.js' // Updated import path
+import { createClient } from 'npm:@supabase/supabase-js@2.43.0' // Changed to npm: specifier
 import { SignJWT } from 'https://esm.sh/jose@5.6.3'
 
 const corsHeaders = {
