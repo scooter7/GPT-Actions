@@ -4,5 +4,8 @@
   "scripts": {
     "dev": "npm run dev --prefix client",
     "postinstall": "npm install --prefix client"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
   }
 }
