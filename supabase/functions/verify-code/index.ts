@@ -56,6 +56,10 @@ serve(async (req) => {
       })
     }
 
+    // Log the received email and code for debugging
+    console.log('Received email for verification:', email);
+    console.log('Received code for verification:', code);
+
     // Verify the OTP using Supabase's built-in method
     const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
       email: email,
