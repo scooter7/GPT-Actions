@@ -3,14 +3,15 @@
 import { useSupabase } from '@/app/components/AuthProvider';
 import GptDashboard from '@/app/components/GptDashboard';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const { session, supabase } = useSupabase();
-  const { push } = require('next/navigation').useRouter();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    push('/login');
+    router.push('/login');
   };
 
   if (!session) {
