@@ -2,6 +2,7 @@
 
 import { useSupabase } from '@/app/components/AuthProvider';
 import GptDashboard from '@/app/components/GptDashboard';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const { session, supabase } = useSupabase();
