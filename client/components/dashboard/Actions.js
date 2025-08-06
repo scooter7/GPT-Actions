@@ -2,14 +2,15 @@
 import { useState, useEffect } from 'react';
 import { useSupabase } from '../auth/SupabaseProvider';
 
-const Toggle = ({ label, enabled, onToggle }) => (
+const Toggle = ({ label, enabled, onToggle, disabled }) => (
   <div className="flex items-center justify-between py-3">
     <span className="text-gray-300">{label}</span>
     <button
       onClick={onToggle}
+      disabled={disabled}
       className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 ${
         enabled ? 'bg-blue-600' : 'bg-gray-600'
-      }`}
+      } ${disabled ? 'cursor-not-allowed' : ''}`}
     >
       <span
         className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
@@ -20,7 +21,7 @@ const Toggle = ({ label, enabled, onToggle }) => (
   </div>
 );
 
-const Actions = ({ selectedGPT }) => {
+const Actions = ({ selectedGPT, onGptChange }) => {
   const { supabase } = useSupabase();
   const [actions, setActions] = useState({});
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ const Actions = ({ selectedGPT }) => {
   // Default actions and their initial states
   const defaultActions = {
     'Email Verification': true,
-    'User Message Tracking': false,
+    'User Message Tracking': true, // Always on by default now
     'Weather Assistance': true,
     'YouTube Summary': true,
     'Website Scraper': false,
@@ -67,7 +68,9 @@ const Actions = ({ selectedGPT }) => {
       console.error('Error updating GPT settings:', error);
       setActions(prev => ({ ...prev, [action]: !prev[action] })); // Revert on error
     } else {
-      // No need to do anything, optimistic update is fine
+      if (onGptChange) {
+        await onGptChange(); // Refresh GPT data to ensure UI is consistent
+      }
     }
     setLoading(false);
   };

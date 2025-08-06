@@ -82,7 +82,7 @@ export default function DashboardClientContent({ initialGpts, initialSelectedGPT
       case 'Analytics':
         return <Analytics selectedGPT={selectedGPT} />;
       case 'Actions':
-        return <Actions selectedGPT={selectedGPT} />;
+        return <Actions selectedGPT={selectedGPT} onGptChange={fetchGpts} />;
       default:
         return <Instructions selectedGPT={selectedGPT} />;
     }

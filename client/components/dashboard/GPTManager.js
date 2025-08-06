@@ -13,7 +13,7 @@ const GPTManager = ({ gpts, selectedGPT, setSelectedGPT, onClose, onGptChange })
   // Default actions for new GPTs
   const defaultSettings = {
     'Email Verification': true,
-    'User Message Tracking': false,
+    'User Message Tracking': true, // Always on by default now
     'Weather Assistance': true,
     'YouTube Summary': true,
     'Website Scraper': false,
