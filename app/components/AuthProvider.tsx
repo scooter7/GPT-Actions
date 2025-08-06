@@ -1,0 +1,74 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter, usePathname } from 'next/navigation';
+import type { SupabaseClient, Session } from '@supabase/supabase-js';
+
+type SupabaseContextType = {
+  supabase: SupabaseClient;
+  session: Session | null;
+};
+
+const SupabaseContext = createContext<SupabaseContextType | null>(null);
+
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setLoading(false);
+    };
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const isAuthPage = pathname === '/login';
+
+    if (!session && !isAuthPage) {
+      router.push('/login');
+    }
+    
+    if (session && isAuthPage) {
+      router.push('/dashboard');
+    }
+  }, [session, pathname, router, loading]);
+
+  if (loading) {
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-center p-24">
+            <p>Loading...</p>
+        </div>
+    );
+  }
+
+  return (
+    <SupabaseContext.Provider value={{ supabase, session }}>
+      {children}
+    </SupabaseContext.Provider>
+  );
+}
+
+export const useSupabase = () => {
+  const context = useContext(SupabaseContext);
+  if (context === null) {
+    throw new Error('useSupabase must be used within an AuthProvider');
+  }
+  return context;
+};
