@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0' // Using specific esm.sh version
-import { SignJWT } from 'npm:jose@5.6.3' // Using npm version for consistency
+import { createClient } from 'npm:@supabase/supabase-js@latest'
+import { SignJWT } from 'npm:jose@5.6.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,20 +17,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-
-    // --- Detailed Debugging Logs ---
-    console.log('SUPABASE_URL length:', Deno.env.get('SUPABASE_URL')?.length);
-    console.log('SUPABASE_SERVICE_ROLE_KEY length:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.length);
-    console.log('Supabase client keys:', Object.keys(supabase));
-    console.log('Supabase auth keys:', Object.keys(supabase.auth));
-    console.log('Type of supabase.auth.admin:', typeof supabase.auth.admin);
-    if (supabase.auth.admin) {
-        console.log('Supabase auth admin keys (Object.keys):', Object.keys(supabase.auth.admin));
-        console.log('Supabase auth admin properties (getOwnPropertyNames):', Object.getOwnPropertyNames(supabase.auth.admin));
-        console.log('Type of supabase.auth.admin.getUserByEmail:', typeof supabase.auth.admin.getUserByEmail);
-        console.log('Type of supabase.auth.admin.sendOtp:', typeof supabase.auth.admin.sendOtp);
-    }
-    // --- End Detailed Debugging Logs ---
 
     // Authenticate the request using the API key from the Authorization header
     const authHeader = req.headers.get('Authorization')
@@ -70,43 +56,22 @@ serve(async (req) => {
       })
     }
 
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email);
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
-      });
-    }
-    const userId = userData.user.id;
+    // Verify the OTP using Supabase's built-in method
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email: email,
+      token: code,
+      type: 'email_otp', // Specify the type as 'email_otp'
+    });
 
-    // Verify the code
-    const { data: authCode, error: authCodeError } = await supabase
-      .from('oauth_auth_codes')
-      .select('*')
-      .eq('code', code)
-      .eq('user_id', userId)
-      .eq('client_id', gpt.id) // Match by gpt.id (client_id in oauth_auth_codes)
-      .gte('expires_at', new Date().toISOString()) // Check if not expired
-      .single();
-
-    if (authCodeError || !authCode) {
-      console.error('Auth code verification error:', authCodeError);
+    if (verifyError || !verifyData.user) {
+      console.error('OTP verification error:', verifyError);
       return new Response(JSON.stringify({ error: 'Invalid or expired code' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
     }
 
-    // Delete the used code
-    const { error: deleteError } = await supabase
-      .from('oauth_auth_codes')
-      .delete()
-      .eq('id', authCode.id);
-
-    if (deleteError) {
-      console.error('Error deleting used code:', deleteError);
-      // Continue even if delete fails, as the main goal is to issue token
-    }
+    const userId = verifyData.user.id;
 
     // Generate JWT token
     const JWT_SECRET = new TextEncoder().encode(Deno.env.get('JWT_SECRET_FOR_OAUTH'));

@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0' // Using specific esm.sh version
+import { createClient } from 'npm:@supabase/supabase-js@latest'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,25 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client with the service role key to bypass RLS
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-
-    // --- Detailed Debugging Logs ---
-    console.log('SUPABASE_URL length:', Deno.env.get('SUPABASE_URL')?.length);
-    console.log('SUPABASE_SERVICE_ROLE_KEY length:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.length);
-    console.log('Supabase client keys:', Object.keys(supabase));
-    console.log('Supabase auth keys:', Object.keys(supabase.auth));
-    console.log('Type of supabase.auth.admin:', typeof supabase.auth.admin);
-    if (supabase.auth.admin) {
-        console.log('Supabase auth admin keys (Object.keys):', Object.keys(supabase.auth.admin));
-        console.log('Supabase auth admin properties (getOwnPropertyNames):', Object.getOwnPropertyNames(supabase.auth.admin));
-        console.log('Type of supabase.auth.admin.getUserByEmail:', typeof supabase.auth.admin.getUserByEmail);
-        console.log('Type of supabase.auth.admin.sendOtp:', typeof supabase.auth.admin.sendOtp);
-    }
-    // --- End Detailed Debugging Logs ---
 
     // Authenticate the request using the API key from the Authorization header
     const authHeader = req.headers.get('Authorization')
@@ -74,83 +59,32 @@ serve(async (req) => {
       })
     }
 
-    // Try to get the user by email, or create a new one if not found
-    let user = null;
-    const { data: existingUserData, error: getUserError } = await supabase.auth.admin.getUserByEmail(email);
+    // Use Supabase's signInWithOtp to create user if not exists and send the OTP email
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/callback`, // A dummy redirect URL
+      },
+    });
 
-    if (getUserError) {
-      // If user not found, attempt to create a new user
-      if (getUserError.status === 404) {
-        console.log(`User with email ${email} not found, attempting to create.`);
-        const { data: newUserData, error: createUserError } = await supabase.auth.admin.createUser({
-          email: email,
-          email_confirm: true, // Automatically confirm email for this flow
-        });
-        if (createUserError) {
-          console.error('Error creating user:', createUserError);
-          return new Response(JSON.stringify({ error: `Failed to create user: ${createUserError.message}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-          });
-        }
-        user = newUserData.user;
-      } else {
-        // Log and return other errors encountered while trying to get the user
-        console.error('Error getting user by email:', getUserError);
-        return new Response(JSON.stringify({ error: `Failed to retrieve user: ${getUserError.message}` }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-        });
-      }
-    } else {
-      // User found, use the existing user data
-      user = existingUserData.user;
-      console.log(`User with email ${email} found.`);
-    }
-
-    // If user is still null after attempts, something went wrong
-    if (!user) {
-      console.error('User object is null after get/create attempts.');
-      return new Response(JSON.stringify({ error: 'Could not find or create user' }), {
+    if (otpError) {
+      console.error('Error sending OTP:', otpError);
+      return new Response(JSON.stringify({ error: `Failed to send verification code: ${otpError.message}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
-    // Generate a 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // Code valid for 5 minutes
+    console.log(`Supabase OTP sent to ${email}.`);
 
-    // Store the code in the database
-    const { error: insertError } = await supabase
-      .from('oauth_auth_codes')
-      .insert({
-        code: code,
-        user_id: user.id,
-        client_id: gpt.id, // Use gpt.id as client_id for the oauth_auth_codes table
-        expires_at: expiresAt,
-      });
-
-    if (insertError) {
-      console.error('Error inserting code:', insertError);
-      return new Response(JSON.stringify({ error: `Failed to generate code: ${insertError.message}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      })
-    }
-
-    // In a real application, you would send this code via email here.
-    // For this example, we'll just return it (for testing/debugging) or log it.
-    console.log(`Generated code for ${email}: ${code}`);
-
-    // Return a success response with the generated code (for testing)
-    return new Response(JSON.stringify({ message: 'Verification code sent (simulated)', code: code }), {
+    // Return a success response
+    return new Response(JSON.stringify({ message: 'Verification code sent successfully' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
 
   } catch (error) {
-    // Catch any unhandled errors and return a generic internal error message
     console.error('Unhandled error in get-code:', error)
     return new Response(JSON.stringify({ error: 'An internal error occurred' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
