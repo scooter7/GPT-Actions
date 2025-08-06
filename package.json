@@ -1,10 +1,7 @@
 {
   "name": "gpt-auth-root",
+  "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "dev": "npm run dev --prefix client",
-    "postinstall": "npm install --prefix client"
-  },
   "devDependencies": {
     "typescript": "^5.9.2"
   }
