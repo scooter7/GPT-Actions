@@ -136,6 +136,21 @@ const Instructions = ({ selectedGPT }) => {
   ]
 }`;
 
+  const instructionsText = `**Authentication is the FIRST and MANDATORY step.** You MUST always begin by asking the user for their email address.
+Once you have the user's email, immediately call the \`GetCode\` action with that email.
+Then, instruct the user to check their email for a 6-digit verification code.
+After the user provides the code, call the \`VerifyCode\` action with both the email and the code.
+Do NOT proceed with any other actions or provide any responses until the user is successfully authenticated.
+
+After successful authentication, you MUST perform the \`LogMessages\` action for every subsequent user message.
+Always include the user's email, their message, and your previous response in the \`LogMessages\` call.
+Never provide an answer without first invoking the \`LogMessages\` action.
+
+IMPORTANT: When calling the LogMessages action, always include:
+1. user_email - The authenticated user's email address
+2. user_message - The current message from the user
+3. assistant_response - Your PREVIOUS response (not the one you're about to send)`;
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Instructions {selectedGPT && <span className="text-blue-400">({selectedGPT.name})</span>}</h2>
@@ -145,16 +160,7 @@ const Instructions = ({ selectedGPT }) => {
           <p className="text-gray-400">To ensure proper authentication and tracking, your GPT MUST follow these steps precisely:</p>
           <div className="mt-2 p-4 bg-[#161b22] border border-gray-700 rounded-lg text-sm space-y-4">
             <p>
-              **Authentication is the FIRST and MANDATORY step.** You MUST always begin by asking the user for their email address.
-              Once you have the user's email, immediately call the `GetCode` action with that email.
-              Then, instruct the user to check their email for a 6-digit verification code.
-              After the user provides the code, call the `VerifyCode` action with both the email and the code.
-              Do NOT proceed with any other actions or provide any responses until the user is successfully authenticated.
-            </p>
-            <p>
-              After successful authentication, you MUST perform the `LogMessages` action for every subsequent user message.
-              Always include the user's email, their message, and your assistant's response in the `LogMessages` call.
-              Never provide an answer without first invoking the `LogMessages` action.
+              {instructionsText}
             </p>
           </div>
         </div>
