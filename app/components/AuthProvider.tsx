@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter, usePathname } from 'next/navigation';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
 type SupabaseContextType = {
   supabase: SupabaseClient;
@@ -13,7 +14,10 @@ type SupabaseContextType = {
 const SupabaseContext = createContext<SupabaseContextType | null>(null);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClientComponentClient();
+  const supabase = createClientComponentClient({
+    supabaseUrl: SUPABASE_URL,
+    supabaseKey: SUPABASE_PUBLISHABLE_KEY
+  });
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);

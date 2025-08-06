@@ -1,6 +1,6 @@
 "use client";
 
-import { useSupabase } from '@/components/AuthProvider';
+import { useSupabase } from '@/app/components/AuthProvider';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
