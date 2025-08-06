@@ -13,8 +13,10 @@ type SupabaseContextType = {
 const SupabaseContext = createContext<SupabaseContextType | null>(null);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  // createClientComponentClient automatically reads NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const [supabase] = useState(() => createClientComponentClient());
+  const [supabase] = useState(() => createClientComponentClient({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  }));
 
   const router = useRouter();
   const pathname = usePathname();
