@@ -85,6 +85,8 @@ const trackingSchema = `{
   ]
 }`;
 
+const systemPromptInstruction = `After every response, you must call the \`trackConversation\` action. Include the user's email, their original prompt, and your full response in the action call.`;
+
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -180,14 +182,33 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Setup Instructions</CardTitle>
-          <CardDescription>Add a new action to your custom GPT to enable tracking.</CardDescription>
+          <CardDescription>Follow these steps to enable tracking for your custom GPT.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
             <p>1. In the GPT editor, go to the 'Configure' tab and click 'Add Action'.</p>
-            <p>2. For 'Authentication', select 'API Key'.</p>
-            <p>3. Paste the **API Key** from above into the 'API Key' field.</p>
-            <p>4. For 'Auth Type', select 'Bearer'.</p>
-            <p>5. Copy the schema below and paste it into the 'Schema' field.</p>
+            <p>2. For 'Authentication', select 'API Key'. Paste the **API Key** from above into the 'API Key' field and select 'Bearer' for 'Auth Type'.</p>
+            <p>3. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
+            <p>4. Copy the **System Prompt Instruction** below and add it to your GPT's instructions.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>System Prompt Instruction</CardTitle>
+                <CardDescription>Add this to your GPT's instructions.</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => handleCopyToClipboard(systemPromptInstruction, 'Instruction')}>
+                {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                Copy Instruction
+            </Button>
+        </CardHeader>
+        <CardContent>
+            <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+                <code>
+                    {systemPromptInstruction}
+                </code>
+            </pre>
         </CardContent>
       </Card>
 
