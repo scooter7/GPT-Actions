@@ -1,10 +1,7 @@
 {
   "name": "gpt-auth-root",
   "private": true,
-  "workspaces": [
-    "client"
-  ],
   "scripts": {
-    "dev": "npm run dev --workspace=client"
+    "dev": "npm run dev --prefix client"
   }
 }
