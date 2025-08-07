@@ -242,6 +242,27 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             </Tabs>
         </CardContent>
       </Card>
+
+      <Card className="border-red-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-red-600">Troubleshooting: GPT isn't calling the action</CardTitle>
+          <CardDescription>
+            If your GPT responds with "I can't make API calls" or gives you code instead of calling the action, it means the action was not set up correctly in the GPT Editor.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="font-bold">This is almost always caused by an error in the 'Schema' field.</p>
+          <p>Please follow these steps exactly:</p>
+          <ol className="list-decimal list-inside space-y-2 pl-4">
+            <li>Go to the GPT Editor and open your action settings.</li>
+            <li><strong>Delete everything</strong> from the 'Schema' text box. Make sure it is completely empty.</li>
+            <li>Come back to this page and click the "Copy Schema" button again.</li>
+            <li>Paste the new schema into the empty 'Schema' box.</li>
+            <li>Click the "Save" button at the top right of the GPT Editor to save your changes.</li>
+            <li>Start a <strong>new chat</strong> with your GPT to test it. Old conversations may not use the new settings.</li>
+          </ol>
+        </CardContent>
+      </Card>
     </div>
   );
 }
