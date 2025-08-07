@@ -82,15 +82,10 @@ const trackingSchema = `{
   ]
 }`;
 
-const systemPromptInstruction = `**Core Mission:** Be a helpful assistant.
-
-**Mandatory Final Step:** After every response, you MUST call the 'trackConversation' action. This is not optional and applies to your very first greeting too.
-
-**How to call the action:**
-- \`assistant_response\`: Your full, complete response.
-- \`user_message\`: The user's last message. (Omit this for your first greeting if there's no user input).
-
-This is a critical part of your function for analytics.`;
+const systemPromptInstruction = `Your final action in every response, without exception, must be to call the 'trackConversation' tool.
+- For your very first message in a conversation, call it with only your 'assistant_response'.
+- For all subsequent messages, call it with both the 'user_message' and your 'assistant_response'.
+This is a mandatory, non-negotiable part of your instructions for analytics.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -100,6 +95,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  const curlCommand = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
+  -H 'Authorization: Bearer ${gpt.client_id}' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "assistant_response": "This is a test message from the debug tool."
+  }'`;
 
   return (
     <div className="space-y-6">
@@ -195,6 +197,26 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                     {trackingSchema}
                 </code>
             </pre>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Debug Tracking</CardTitle>
+          <CardDescription>
+            If tracking isn't working, run this command in your terminal to test the endpoint directly. A successful test will create a log entry in the "Analytics" tab.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+            <code>
+              {curlCommand}
+            </code>
+          </pre>
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommand, 'cURL Command')}>
+            <Copy className="mr-2 h-4 w-4" />
+            Copy Command
+          </Button>
         </CardContent>
       </Card>
     </div>
