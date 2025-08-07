@@ -104,7 +104,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     "assistant_response": "This is a test message from the debug tool."
   }'`;
 
-  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: Bearer ${gpt.client_id}" -H "Content-Type: application/json" -d '{"assistant_response": "This is a test message from the debug tool."}'`;
+  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: Bearer ${gpt.client_id}" -H "Content-Type: application/json" -d "{\\"assistant_response\\": \\"This is a test message from the debug tool.\\"}"`;
 
   return (
     <div className="space-y-6">
