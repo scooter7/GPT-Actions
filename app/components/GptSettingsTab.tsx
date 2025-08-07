@@ -113,12 +113,18 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         });
 
         if (error) {
-            // The error object from invoke might contain the function's response on failure
-            const responseBody = error.context?.response?.json ? await error.context.response.json() : null;
-            if (responseBody && responseBody.message) {
-                setTestResult({ success: false, message: `Error: ${responseBody.message}` });
-            } else {
-                setTestResult({ success: false, message: `Network error or function not found: ${error.message}` });
+            try {
+                // error.context is the Response object for HTTP errors
+                const responseBody = await error.context.json();
+                if (responseBody && responseBody.message) {
+                    setTestResult({ success: false, message: `Failed: ${responseBody.message}` });
+                } else {
+                    // Fallback if the body is not JSON or doesn't have a message
+                    setTestResult({ success: false, message: `Error: ${error.message}` });
+                }
+            } catch (e) {
+                // Fallback if parsing the response body fails
+                setTestResult({ success: false, message: `Error: ${error.message}` });
             }
         } else {
             setTestResult(data);
