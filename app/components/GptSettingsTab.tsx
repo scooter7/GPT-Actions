@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Gpt = {
   id: string;
@@ -96,12 +97,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const curlCommand = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
+  const curlCommandMacOS = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
   -H 'Authorization: Bearer ${gpt.client_id}' \\
   -H 'Content-Type: application/json' \\
   -d '{
     "assistant_response": "This is a test message from the debug tool."
   }'`;
+
+  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: Bearer ${gpt.client_id}" -H "Content-Type: application/json" -d '{"assistant_response": "This is a test message from the debug tool."}'`;
 
   return (
     <div className="space-y-6">
@@ -208,15 +211,35 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-            <code>
-              {curlCommand}
-            </code>
-          </pre>
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommand, 'cURL Command')}>
-            <Copy className="mr-2 h-4 w-4" />
-            Copy Command
-          </Button>
+            <Tabs defaultValue="macos" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="macos">macOS / Linux</TabsTrigger>
+                <TabsTrigger value="windows">Windows</TabsTrigger>
+              </TabsList>
+              <TabsContent value="macos" className="mt-4">
+                 <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+                    <code>
+                      {curlCommandMacOS}
+                    </code>
+                  </pre>
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommandMacOS, 'cURL Command')}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Command
+                  </Button>
+              </TabsContent>
+              <TabsContent value="windows" className="mt-4">
+                <p className="text-xs text-gray-500 mb-2">Run this command in <strong>PowerShell</strong>, not the old Command Prompt (cmd.exe).</p>
+                 <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+                    <code>
+                      {curlCommandWindows}
+                    </code>
+                  </pre>
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommandWindows, 'cURL Command')}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Command
+                  </Button>
+              </TabsContent>
+            </Tabs>
         </CardContent>
       </Card>
     </div>
