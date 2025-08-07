@@ -47,6 +47,7 @@ const trackingSchema = `{
     }
   },
   "components": {
+    "schemas": {},
     "securitySchemes": {
       "apiKey": {
         "type": "http",
