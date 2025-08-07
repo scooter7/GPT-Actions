@@ -1,10 +1,14 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "paths": {},
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["esnext"],
     "types": ["@supabase/functions-js/src/edge-runtime.d.ts"]
   },
-  "include": [
-    "functions/**/*.ts"
-  ]
+  "include": ["functions/**/*.ts"],
+  "exclude": ["node_modules"]
 }

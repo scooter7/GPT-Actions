@@ -71,15 +71,16 @@ const trackingSchema = `{
   "components": {
     "schemas": {},
     "securitySchemes": {
-      "apiKey": {
-        "type": "http",
-        "scheme": "bearer"
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key"
       }
     }
   },
   "security": [
     {
-      "apiKey": []
+      "apiKeyAuth": []
     }
   ]
 }`;
@@ -108,22 +109,19 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     try {
         const { data, error } = await supabase.functions.invoke('test-auth', {
             headers: {
-                Authorization: `Bearer ${gpt.client_id}`,
+                'X-Api-Key': gpt.client_id,
             },
         });
 
         if (error) {
             try {
-                // error.context is the Response object for HTTP errors
                 const responseBody = await error.context.json();
                 if (responseBody && responseBody.message) {
                     setTestResult({ success: false, message: `Failed: ${responseBody.message}` });
                 } else {
-                    // Fallback if the body is not JSON or doesn't have a message
                     setTestResult({ success: false, message: `Error: ${error.message}` });
                 }
             } catch (e) {
-                // Fallback if parsing the response body fails
                 setTestResult({ success: false, message: `Error: ${error.message}` });
             }
         } else {
@@ -138,13 +136,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   };
 
   const curlCommandMacOS = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
-  -H 'Authorization: Bearer ${gpt.client_id}' \\
+  -H 'X-Api-Key: ${gpt.client_id}' \\
   -H 'Content-Type: application/json' \\
   -d '{
     "assistant_response": "This is a test message from the debug tool."
   }'`;
 
-  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: Bearer ${gpt.client_id}" -H "Content-Type: application/json" -d "{\\"assistant_response\\": \\"This is a test message from the debug tool.\\"}"`;
+  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "X-Api-Key: ${gpt.client_id}" -H "Content-Type: application/json" -d "{\\"assistant_response\\": \\"This is a test message from the debug tool.\\"}"`;
 
   return (
     <div className="space-y-6">
@@ -234,7 +232,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                  <ul className="list-disc list-inside space-y-1 pl-4 text-sm mt-2">
                     <li>Authentication Type must be set to <strong>API Key</strong>.</li>
                     <li>The <strong>API Key</strong> field must contain the key from this page.</li>
-                    <li>Auth Type must be set to <strong>Bearer</strong>.</li>
+                    <li>The <strong>Header Name</strong> must be set to `X-Api-Key`.</li>
                 </ul>
             </div>
             <div>
@@ -252,7 +250,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
             <p>1. In the GPT editor, go to the 'Configure' tab and click 'Add Action'.</p>
-            <p>2. For 'Authentication', select 'API Key'. Paste the **API Key** from above into the 'API Key' field and select 'Bearer' for 'Auth Type'.</p>
+            <p>2. For 'Authentication', select 'API Key'. Paste the **API Key** from above into the 'API Key' field. Set the **Header Name** to `X-Api-Key`.</p>
             <p>3. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
             <p>4. Copy the **System Prompt Instruction** below and add it to your GPT's instructions.</p>
             <p>5. Add a **Privacy Policy URL** in the action editor. This is required for the confirmation dialog to appear.</p>
