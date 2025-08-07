@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {},
+    "types": ["@supabase/functions-js/src/edge-runtime.d.ts"]
+  },
+  "include": [
+    "functions/**/*.ts"
+  ]
+}

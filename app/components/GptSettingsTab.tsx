@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useSupabase } from '@/app/components/AuthProvider';
 import { Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,12 +90,45 @@ const systemPromptInstruction = `**Analytics Requirement:** To ensure all conver
 - **All Other Responses:** For every subsequent response, call the action with the user's last message as \`user_message\` and your new response as \`assistant_response\`.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
+  const { supabase } = useSupabase();
   const [copied, setCopied] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+        const { data, error } = await supabase.functions.invoke('test-auth', {
+            headers: {
+                Authorization: `Bearer ${gpt.client_id}`,
+            },
+        });
+
+        if (error) {
+            // The error object from invoke might contain the function's response on failure
+            const responseBody = error.context?.response?.json ? await error.context.response.json() : null;
+            if (responseBody && responseBody.message) {
+                setTestResult({ success: false, message: `Error: ${responseBody.message}` });
+            } else {
+                setTestResult({ success: false, message: `Network error or function not found: ${error.message}` });
+            }
+        } else {
+            setTestResult(data);
+        }
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setTestResult({ success: false, message: `An unexpected error occurred: ${errorMessage}` });
+    } finally {
+        setIsTesting(false);
+    }
   };
 
   const curlCommandMacOS = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
@@ -152,6 +186,61 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle>Connection Test</CardTitle>
+          <CardDescription>
+            Click the button below to verify that your API key is valid and the tracking service is reachable.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleTestConnection} disabled={isTesting}>
+            {isTesting ? 'Testing...' : 'Run Connection Test'}
+          </Button>
+          {testResult && (
+            <div className={`mt-4 p-3 rounded-md text-sm ${testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <p className="font-bold">{testResult.success ? 'Success!' : 'Failed'}</p>
+              <p>{testResult.message}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-orange-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-orange-600">Troubleshooting Checklist</CardTitle>
+          <CardDescription>
+            If the Connection Test above succeeds but your GPT still doesn't call the action, the problem is in your GPT Editor settings. Please check these three things carefully.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div>
+                <h4 className="font-bold">1. Is the Schema 100% Correct?</h4>
+                <p className="text-sm">This is the most common cause of failure. Even a single extra space or character can break it.</p>
+                <ol className="list-decimal list-inside space-y-1 pl-4 text-sm mt-2">
+                    <li>Go to the GPT Editor and open your action settings.</li>
+                    <li><strong>Delete everything</strong> from the 'Schema' text box. Make sure it is completely empty.</li>
+                    <li>Come back to this page and click the "Copy Schema" button again.</li>
+                    <li>Paste the new schema into the empty 'Schema' box.</li>
+                </ol>
+            </div>
+            <div>
+                <h4 className="font-bold">2. Is Authentication Set Up Correctly?</h4>
+                <p className="text-sm">In the 'Authentication' section of your action:</p>
+                 <ul className="list-disc list-inside space-y-1 pl-4 text-sm mt-2">
+                    <li>Authentication Type must be set to <strong>API Key</strong>.</li>
+                    <li>The <strong>API Key</strong> field must contain the key from this page.</li>
+                    <li>Auth Type must be set to <strong>Bearer</strong>.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 className="font-bold">3. Is the Privacy Policy URL Set?</h4>
+                <p className="text-sm">OpenAI requires a privacy policy URL for actions to work. You can use your app's main URL (e.g., `https://your-app.vercel.app`) if you don't have a dedicated page.</p>
+            </div>
+             <p className="text-sm font-bold mt-4">Remember to click "Save" in the top right of the GPT Editor and start a new chat to test your changes.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Setup Instructions</CardTitle>
           <CardDescription>Follow these steps to enable tracking for your custom GPT.</CardDescription>
         </CardHeader>
@@ -160,7 +249,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <p>2. For 'Authentication', select 'API Key'. Paste the **API Key** from above into the 'API Key' field and select 'Bearer' for 'Auth Type'.</p>
             <p>3. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
             <p>4. Copy the **System Prompt Instruction** below and add it to your GPT's instructions.</p>
-            <p>5. Add a **Privacy Policy URL** in the action editor. This is required for the confirmation dialog to appear. See the card below for details.</p>
+            <p>5. Add a **Privacy Policy URL** in the action editor. This is required for the confirmation dialog to appear.</p>
         </CardContent>
       </Card>
 
@@ -206,30 +295,9 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Privacy Policy URL</CardTitle>
+          <CardTitle>Debug Tracking (Advanced)</CardTitle>
           <CardDescription>
-            This is a required field in the GPT Editor for actions to work correctly. It gives users information about how their data is handled.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm mb-2">
-            In the GPT Editor, under your Action settings, paste a URL into the "Privacy policy" field.
-          </p>
-          <p className="text-sm mb-4">
-            For now, you can use the main URL of your deployed application. If you don't have a dedicated privacy page yet, the root URL is usually sufficient to get started.
-          </p>
-          <Label>Example URL</Label>
-          <p className="text-sm font-mono bg-gray-100 p-2 rounded">
-            https://your-app-name.vercel.app
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Debug Tracking</CardTitle>
-          <CardDescription>
-            If tracking isn't working, run this command in your terminal to test the endpoint directly. A successful test will create a log entry in the "Analytics" tab.
+            If you want to test the full tracking endpoint directly, run this command in your terminal. A successful test will create a log entry in the "Analytics" tab.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -262,27 +330,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                   </Button>
               </TabsContent>
             </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card className="border-red-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-red-600">Troubleshooting: GPT isn't calling the action</CardTitle>
-          <CardDescription>
-            If your GPT responds with "I can't make API calls" or gives you code instead of calling the action, it means the action was not set up correctly in the GPT Editor.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="font-bold">This is almost always caused by an error in the 'Schema' field.</p>
-          <p>Please follow these steps exactly:</p>
-          <ol className="list-decimal list-inside space-y-2 pl-4">
-            <li>Go to the GPT Editor and open your action settings.</li>
-            <li><strong>Delete everything</strong> from the 'Schema' text box. Make sure it is completely empty.</li>
-            <li>Come back to this page and click the "Copy Schema" button again.</li>
-            <li>Paste the new schema into the empty 'Schema' box.</li>
-            <li>Click the "Save" button at the top right of the GPT Editor to save your changes.</li>
-            <li>Start a <strong>new chat</strong> with your GPT to test it. Old conversations may not use the new settings.</li>
-          </ol>
         </CardContent>
       </Card>
     </div>
