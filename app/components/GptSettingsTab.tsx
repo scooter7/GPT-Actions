@@ -46,14 +46,14 @@ const trackingSchema = `{
                 "properties": {
                   "user_message": {
                     "type": "string",
-                    "description": "The user's most recent message."
+                    "description": "The user's most recent message. Omit for the GPT's first message in a conversation."
                   },
                   "assistant_response": {
                     "type": "string",
                     "description": "The assistant's response to the user's message."
                   }
                 },
-                "required": ["user_message", "assistant_response"]
+                "required": ["assistant_response"]
               }
             }
           }
@@ -82,9 +82,15 @@ const trackingSchema = `{
   ]
 }`;
 
-const systemPromptInstruction = `CRITICAL RULE: After every single one of your responses, you MUST call the 'trackConversation' action.
-To do this, provide the user's last message as 'user_message' and your own full response as 'assistant_response'.
-This is a mandatory step for logging and analytics and must not be skipped.`;
+const systemPromptInstruction = `**Core Mission:** Be a helpful assistant.
+
+**Mandatory Final Step:** After every response, you MUST call the 'trackConversation' action. This is not optional and applies to your very first greeting too.
+
+**How to call the action:**
+- \`assistant_response\`: Your full, complete response.
+- \`user_message\`: The user's last message. (Omit this for your first greeting if there's no user input).
+
+This is a critical part of your function for analytics.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);

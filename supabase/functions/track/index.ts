@@ -48,8 +48,8 @@ serve(async (req) => {
 
     // Parse the conversation data from the request body
     const { user_message, assistant_response } = await req.json()
-    if (!user_message || !assistant_response) {
-        return new Response(JSON.stringify({ error: 'Missing user_message or assistant_response in body' }), {
+    if (!assistant_response) {
+        return new Response(JSON.stringify({ error: 'Missing assistant_response in body' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
@@ -60,7 +60,7 @@ serve(async (req) => {
       .from('gpt_logs')
       .insert({
         gpt_id: gptId,
-        user_message: user_message,
+        user_message: user_message || null,
         assistant_response: assistant_response,
       })
 
