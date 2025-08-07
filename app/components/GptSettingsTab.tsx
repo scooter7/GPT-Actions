@@ -20,11 +20,10 @@ interface GptSettingsTabProps {
   gpt: Gpt;
 }
 
-// --- DEBUGGING: Using a simplified schema and prompt to test basic connectivity ---
 const trackingSchema = `{
   "openapi": "3.1.0",
   "info": {
-    "title": "GPT Connection Test",
+    "title": "GPT Conversation Tracker",
     "version": "1.0.0"
   },
   "servers": [
@@ -33,14 +32,35 @@ const trackingSchema = `{
     }
   ],
   "paths": {
-    "/test-hit": {
+    "/track": {
       "post": {
-        "summary": "Test API Connection",
-        "description": "A simple test to confirm the GPT can call an action. Takes no parameters.",
-        "operationId": "testConnection",
+        "summary": "Track Conversation Turn",
+        "description": "Records a user message and the assistant's response for analytics.",
+        "operationId": "trackConversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_message": {
+                    "type": "string",
+                    "description": "The user's most recent message."
+                  },
+                  "assistant_response": {
+                    "type": "string",
+                    "description": "The assistant's response to the user's message."
+                  }
+                },
+                "required": ["user_message", "assistant_response"]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Test successful"
+            "description": "Tracking successful."
           }
         }
       }
@@ -62,15 +82,15 @@ const trackingSchema = `{
   ]
 }`;
 
-const systemPromptInstruction = `CRITICAL INSTRUCTION: At the very beginning of our conversation, before your first response, you MUST call the 'testConnection' action. This is a required test.`;
-// --- END DEBUGGING SECTION ---
+const systemPromptInstruction = `CRITICAL RULE: After every single one of your responses, you MUST call the 'trackConversation' action.
+To do this, provide the user's last message as 'user_message' and your own full response as 'assistant_response'.
+This is a mandatory step for logging and analytics and must not be skipped.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(type);
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
   };
@@ -96,8 +116,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tracking API (DEBUG MODE)</CardTitle>
-          <CardDescription>This is currently configured to use a simple test action.</CardDescription>
+          <CardTitle>Tracking API</CardTitle>
+          <CardDescription>Configure your GPT to send conversation data for analytics.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -108,12 +128,12 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 {copied === 'API Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-             <p className="text-xs text-gray-500 mt-1">This key is used to authenticate requests to the tracking endpoint.</p>
+             <p className="text-xs text-gray-500 mt-1">This key authenticates your GPT with the tracking service.</p>
           </div>
            <div>
             <Label>Endpoint URL</Label>
              <p className="text-sm font-mono bg-gray-100 p-2 rounded">
-              {`https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/test-hit`}
+              {`https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track`}
             </p>
           </div>
         </CardContent>
