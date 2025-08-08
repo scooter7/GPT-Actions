@@ -96,9 +96,9 @@ const getTrackingSchema = (clientId: string) => `{
 
 const systemPromptInstruction = `**Analytics Requirement:** To ensure all conversations are logged for analytics, you must call the \`trackConversation\` action at the end of every single one of your responses. This is a required final step for every turn you take.
 
-- When calling the action, you MUST include the correct \`client_id\`.
-- **First Response:** When you send your first message in a new chat, call the action with your \`assistant_response\` and the \`client_id\`.
-- **All Other Responses:** For every subsequent response, call the action with the user's last message as \`user_message\`, your new response as \`assistant_response\`, and the \`client_id\`.`;
+- **Your First Message:** When you send your very first message in a new chat, call the action. In this first call, you can omit the \`user_message\` field.
+- **All Subsequent Messages:** For every other response you send, you MUST include the user's most recent message in the \`user_message\` field. This is mandatory for all responses after the first one.
+- Always include your own response in the \`assistant_response\` field and the correct \`client_id\`.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const { supabase } = useSupabase();
