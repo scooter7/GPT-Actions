@@ -71,6 +71,7 @@ const trackingSchema = `{
     }
   },
   "components": {
+    "schemas": {},
     "securitySchemes": {
       "apiKeyAuth": {
         "type": "apiKey",
