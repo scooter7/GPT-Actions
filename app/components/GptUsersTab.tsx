@@ -19,6 +19,11 @@ export default function GptUsersTab({ gptId }: GptUsersTabProps) {
   const { supabase } = useSupabase();
   const [users, setUsers] = useState<GptUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -69,7 +74,7 @@ export default function GptUsersTab({ gptId }: GptUsersTabProps) {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleString()}</TableCell>
+                    <TableCell>{isClient ? new Date(user.created_at).toLocaleString() : ''}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

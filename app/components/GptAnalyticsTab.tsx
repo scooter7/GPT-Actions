@@ -22,6 +22,11 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
   const { supabase } = useSupabase();
   const [logs, setLogs] = useState<GptLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -77,7 +82,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
                     <TableCell>{log.gpt_user?.[0]?.email || 'Unknown'}</TableCell>
                     <TableCell className="max-w-xs truncate">{log.user_message}</TableCell>
                     <TableCell className="max-w-xs truncate">{log.assistant_response}</TableCell>
-                    <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
+                    <TableCell>{isClient ? new Date(log.created_at).toLocaleString() : ''}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

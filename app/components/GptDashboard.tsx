@@ -20,6 +20,11 @@ export default function GptDashboard() {
   const [gpts, setGpts] = useState<Gpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const fetchGpts = async () => {
     if (!session) return;
@@ -81,9 +86,11 @@ export default function GptDashboard() {
                       <CardDescription>{gpt.description || 'No description'}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-500">
-                        Created: {new Date(gpt.created_at).toLocaleDateString()}
-                      </p>
+                      {isClient && (
+                        <p className="text-sm text-gray-500">
+                          Created: {new Date(gpt.created_at).toLocaleDateString()}
+                        </p>
+                      )}
                     </CardContent>
                     <CardFooter>
                       <Link href={`/dashboard/gpt/${gpt.id}`} passHref>
