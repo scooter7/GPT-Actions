@@ -29,7 +29,7 @@ const getTrackingSchema = (clientId: string) => `{
   "openapi": "3.1.0",
   "info": {
     "title": "GPT Conversation Tracker",
-    "description": "Tracks conversation turns for a custom GPT.",
+    "description": "Tracks conversation turns for a custom GPT using two separate actions.",
     "version": "1.0.0"
   },
   "servers": [
@@ -38,11 +38,44 @@ const getTrackingSchema = (clientId: string) => `{
     }
   ],
   "paths": {
-    "/track": {
+    "/track-first-message": {
       "post": {
-        "summary": "Log Conversation",
-        "description": "You MUST ALWAYS call this action at the end of every response to log the conversation for analytics. This is a required final step.",
-        "operationId": "trackConversation",
+        "summary": "Log Initial Assistant Message",
+        "description": "You MUST call this action ONLY for your very first message in a new conversation.",
+        "operationId": "trackFirstMessage",
+        "x-openai-isConsequential": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "client_id": {
+                    "type": "string",
+                    "description": "The Client ID for your GPT.",
+                    "default": "${clientId}"
+                  },
+                  "assistant_response": {
+                    "type": "string",
+                    "description": "The assistant's first response in the conversation."
+                  }
+                },
+                "required": ["client_id", "assistant_response"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Tracking successful." }
+        }
+      }
+    },
+    "/track-conversation-turn": {
+      "post": {
+        "summary": "Log Conversation Turn",
+        "description": "You MUST call this action for ALL responses AFTER your first one.",
+        "operationId": "trackConversationTurn",
         "x-openai-isConsequential": true,
         "requestBody": {
           "required": true,
@@ -58,22 +91,20 @@ const getTrackingSchema = (clientId: string) => `{
                   },
                   "user_message": {
                     "type": "string",
-                    "description": "The user's most recent message. Omit for the GPT's first message in a conversation."
+                    "description": "The user's most recent message."
                   },
                   "assistant_response": {
                     "type": "string",
                     "description": "The assistant's response to the user's message."
                   }
                 },
-                "required": ["client_id", "assistant_response"]
+                "required": ["client_id", "user_message", "assistant_response"]
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Tracking successful."
-          }
+          "200": { "description": "Tracking successful." }
         }
       }
     }
@@ -94,11 +125,15 @@ const getTrackingSchema = (clientId: string) => `{
   ]
 }`;
 
-const systemPromptInstruction = `**Analytics Requirement:** To ensure all conversations are logged for analytics, you must call the \`trackConversation\` action at the end of every single one of your responses. This is a required final step for every turn you take.
+const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely at the end of every response.
 
-- **Your First Message:** When you send your very first message in a new chat, call the action. In this first call, you can omit the \`user_message\` field.
-- **All Subsequent Messages:** For every other response you send, you MUST include the user's most recent message in the \`user_message\` field. This is mandatory for all responses after the first one.
-- Always include your own response in the \`assistant_response\` field and the correct \`client_id\`.`;
+1.  **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action. Provide your own introductory message in the \`assistant_response\`.
+
+2.  **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
+    -   You MUST provide the user's most recent message in the \`user_message\` field. This is required.
+    -   You MUST provide your own response in the \`assistant_response\` field.
+
+This is not optional; it is a core part of your function.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const { supabase } = useSupabase();
@@ -148,15 +183,16 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const getCurlCommand = (platform: 'macos' | 'windows') => {
     const body = JSON.stringify({
       client_id: gpt.client_id,
-      assistant_response: "This is a test message from the debug tool."
+      user_message: "This is a test user message.",
+      assistant_response: "This is a test assistant response."
     });
 
     if (platform === 'windows') {
       const escapedBody = body.replace(/"/g, '`"');
-      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
+      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-conversation-turn" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
     }
 
-    return `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
+    return `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-conversation-turn' \\
   -H 'Authorization: ${bearerToken}' \\
   -H 'Content-Type: application/json' \\
   -d '${body}'`;
@@ -188,19 +224,18 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card className="border-blue-500 border-2">
         <CardHeader>
-          <CardTitle className="text-blue-600">Setup Instructions</CardTitle>
+          <CardTitle className="text-blue-600">New Setup Instructions</CardTitle>
           <CardDescription>
-            Please follow these steps carefully. We are now using a standard Bearer Token for authentication.
+            The tracking system has been updated. Please delete your old GPT Action and create a new one with these instructions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
-            <p>1. In the GPT editor, go to 'Add Action'.</p>
-            <p>2. Under 'Authentication', select 'API Key'.</p>
-            <p>3. Copy the **Authorization Token** below and paste it into the 'API Key' field in the editor.</p>
+            <p>1. In the GPT editor, **delete your existing Action**.</p>
+            <p>2. Create a new Action. Under 'Authentication', select 'API Key'.</p>
+            <p>3. Copy the **Authorization Token** below and paste it into the 'API Key' field.</p>
             <p>4. Set the **Header Name** to `Authorization`.</p>
-            <p>5. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
-            <p>6. Add the **System Prompt Instruction** to your GPT's instructions.</p>
-            <p>7. Ensure you have a **Privacy Policy URL** set. This is required by OpenAI.</p>
+            <p>5. Copy the new **Tracking Schema** below and paste it into the 'Schema' field.</p>
+            <p>6. Add the new **System Prompt Instruction** to your GPT's instructions.</p>
         </CardContent>
       </Card>
 
@@ -226,7 +261,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader>
           <CardTitle>Connection Test</CardTitle>
           <CardDescription>
-            This tests if your GPT's Client ID is valid. It does not test the full authentication flow.
+            This tests if your GPT's Client ID is valid.
           </CardDescription>
         </CardHeader>
         <CardContent>
