@@ -23,6 +23,7 @@ interface GptSettingsTabProps {
 }
 
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
+const bearerToken = `Bearer ${anonKey}`;
 
 const getTrackingSchema = (clientId: string) => `{
   "openapi": "3.1.0",
@@ -39,10 +40,10 @@ const getTrackingSchema = (clientId: string) => `{
   "paths": {
     "/track": {
       "post": {
-        "summary": "Log Conversation (Required)",
+        "summary": "Log Conversation",
         "description": "You MUST ALWAYS call this action at the end of every response to log the conversation for analytics. This is a required final step.",
         "operationId": "trackConversation",
-        "x-openai-isConsequential": false,
+        "x-openai-isConsequential": true,
         "requestBody": {
           "required": true,
           "content": {
@@ -80,16 +81,15 @@ const getTrackingSchema = (clientId: string) => `{
   "components": {
     "schemas": {},
     "securitySchemes": {
-      "apiKeyAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "apikey"
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   },
   "security": [
     {
-      "apiKeyAuth": []
+      "bearerAuth": []
     }
   ]
 }`;
@@ -152,13 +152,12 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     });
 
     if (platform === 'windows') {
-      // Properly escape for PowerShell
       const escapedBody = body.replace(/"/g, '`"');
-      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "apikey: ${anonKey}" -H "Content-Type: application/json" -d "${escapedBody}"`;
+      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
     }
 
     return `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
-  -H 'apikey: ${anonKey}' \\
+  -H 'Authorization: ${bearerToken}' \\
   -H 'Content-Type: application/json' \\
   -d '${body}'`;
   };
@@ -182,41 +181,41 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 {copied === 'Client ID' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-             <p className="text-xs text-gray-500 mt-1">Your GPT will need to include this in every tracking request.</p>
+             <p className="text-xs text-gray-500 mt-1">Your GPT will need to include this in every tracking request body.</p>
           </div>
         </CardContent>
       </Card>
 
       <Card className="border-blue-500 border-2">
         <CardHeader>
-          <CardTitle className="text-blue-600">New Setup Instructions</CardTitle>
+          <CardTitle className="text-blue-600">Setup Instructions</CardTitle>
           <CardDescription>
-            Please follow these updated steps carefully to fix the authentication error.
+            Please follow these steps carefully. We are now using a standard Bearer Token for authentication.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
             <p>1. In the GPT editor, go to 'Add Action'.</p>
-            <p>2. For 'Authentication', select 'API Key'.</p>
-            <p>3. Copy the **Authentication Key** below and paste it into the 'API Key' field in the editor.</p>
-            <p>4. Set the **Header Name** to `apikey`.</p>
+            <p>2. Under 'Authentication', select 'API Key'.</p>
+            <p>3. Copy the **Authorization Token** below and paste it into the 'API Key' field in the editor.</p>
+            <p>4. Set the **Header Name** to `Authorization`.</p>
             <p>5. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
             <p>6. Add the **System Prompt Instruction** to your GPT's instructions.</p>
-            <p>7. Ensure you have a **Privacy Policy URL** set.</p>
+            <p>7. Ensure you have a **Privacy Policy URL** set. This is required by OpenAI.</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Authentication Key</CardTitle>
-          <CardDescription>This is the public key for the tracking service.</CardDescription>
+          <CardTitle>Authorization Token</CardTitle>
+          <CardDescription>This token authenticates your requests to the tracking service.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="api-key">Key</Label>
+            <Label htmlFor="auth-token">Token (includes "Bearer " prefix)</Label>
             <div className="flex items-center gap-2">
-              <Input id="api-key" value={anonKey} readOnly className="font-mono text-xs"/>
-              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(anonKey, 'Authentication Key')}>
-                {copied === 'Authentication Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <Input id="auth-token" value={bearerToken} readOnly className="font-mono text-xs"/>
+              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(bearerToken, 'Authorization Token')}>
+                {copied === 'Authorization Token' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>
@@ -227,7 +226,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader>
           <CardTitle>Connection Test</CardTitle>
           <CardDescription>
-            This tests if your GPT's Client ID is valid.
+            This tests if your GPT's Client ID is valid. It does not test the full authentication flow.
           </CardDescription>
         </CardHeader>
         <CardContent>
