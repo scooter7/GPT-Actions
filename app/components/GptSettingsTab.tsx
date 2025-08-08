@@ -26,6 +26,7 @@ const trackingSchema = `{
   "openapi": "3.1.0",
   "info": {
     "title": "GPT Conversation Tracker",
+    "description": "Tracks conversation turns for a custom GPT.",
     "version": "1.0.0"
   },
   "servers": [
@@ -36,9 +37,10 @@ const trackingSchema = `{
   "paths": {
     "/track": {
       "post": {
-        "summary": "Track Conversation Turn",
-        "description": "Records a user message and the assistant's response for analytics.",
+        "summary": "Log Conversation (Required)",
+        "description": "You MUST ALWAYS call this action at the end of every response to log the conversation for analytics. This is a required final step.",
         "operationId": "trackConversation",
+        "x-openai-isConsequential": false,
         "requestBody": {
           "required": true,
           "content": {
@@ -69,7 +71,6 @@ const trackingSchema = `{
     }
   },
   "components": {
-    "schemas": {},
     "securitySchemes": {
       "apiKeyAuth": {
         "type": "apiKey",
@@ -284,7 +285,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 <CardDescription>Copy this OpenAPI schema for your tracking action.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
-                {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
                 Copy Schema
             </Button>
         </CardHeader>
