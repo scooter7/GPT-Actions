@@ -22,7 +22,9 @@ interface GptSettingsTabProps {
   gpt: Gpt;
 }
 
-const trackingSchema = `{
+const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
+
+const getTrackingSchema = (clientId: string) => `{
   "openapi": "3.1.0",
   "info": {
     "title": "GPT Conversation Tracker",
@@ -48,6 +50,11 @@ const trackingSchema = `{
               "schema": {
                 "type": "object",
                 "properties": {
+                  "client_id": {
+                    "type": "string",
+                    "description": "The Client ID for your GPT.",
+                    "default": "${clientId}"
+                  },
                   "user_message": {
                     "type": "string",
                     "description": "The user's most recent message. Omit for the GPT's first message in a conversation."
@@ -57,7 +64,7 @@ const trackingSchema = `{
                     "description": "The assistant's response to the user's message."
                   }
                 },
-                "required": ["assistant_response"]
+                "required": ["client_id", "assistant_response"]
               }
             }
           }
@@ -76,7 +83,7 @@ const trackingSchema = `{
       "apiKeyAuth": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-Api-Key"
+        "name": "apikey"
       }
     }
   },
@@ -89,14 +96,17 @@ const trackingSchema = `{
 
 const systemPromptInstruction = `**Analytics Requirement:** To ensure all conversations are logged for analytics, you must call the \`trackConversation\` action at the end of every single one of your responses. This is a required final step for every turn you take.
 
-- **First Response:** When you send your first message in a new chat, call the action with your \`assistant_response\`.
-- **All Other Responses:** For every subsequent response, call the action with the user's last message as \`user_message\` and your new response as \`assistant_response\`.`;
+- When calling the action, you MUST include the correct \`client_id\`.
+- **First Response:** When you send your first message in a new chat, call the action with your \`assistant_response\` and the \`client_id\`.
+- **All Other Responses:** For every subsequent response, call the action with the user's last message as \`user_message\`, your new response as \`assistant_response\`, and the \`client_id\`.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const { supabase } = useSupabase();
   const [copied, setCopied] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+
+  const trackingSchema = getTrackingSchema(gpt.client_id);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -110,9 +120,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
     try {
         const { data, error } = await supabase.functions.invoke('test-auth', {
-            headers: {
-                'X-Api-Key': gpt.client_id,
-            },
+            body: { client_id: gpt.client_id }
         });
 
         if (error) {
@@ -137,21 +145,29 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     }
   };
 
-  const curlCommandMacOS = `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
-  -H 'X-Api-Key: ${gpt.client_id}' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "assistant_response": "This is a test message from the debug tool."
-  }'`;
+  const getCurlCommand = (platform: 'macos' | 'windows') => {
+    const body = JSON.stringify({
+      client_id: gpt.client_id,
+      assistant_response: "This is a test message from the debug tool."
+    });
 
-  const curlCommandWindows = `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "X-Api-Key: ${gpt.client_id}" -H "Content-Type: application/json" -d "{\\"assistant_response\\": \\"This is a test message from the debug tool.\\"}"`;
+    if (platform === 'windows') {
+      // Properly escape for PowerShell
+      const escapedBody = body.replace(/"/g, '`"');
+      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track" -H "apikey: ${anonKey}" -H "Content-Type: application/json" -d "${escapedBody}"`;
+    }
+
+    return `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track' \\
+  -H 'apikey: ${anonKey}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${body}'`;
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>GPT Details</CardTitle>
-          <CardDescription>Basic information about your GPT.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -159,33 +175,50 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <p className="text-sm font-medium">{gpt.name}</p>
           </div>
           <div>
-            <Label>Description</Label>
-            <p className="text-sm text-gray-600">{gpt.description || 'No description provided.'}</p>
+            <Label htmlFor="client-id">Your GPT's Client ID</Label>
+            <div className="flex items-center gap-2">
+              <Input id="client-id" value={gpt.client_id} readOnly />
+              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(gpt.client_id, 'Client ID')}>
+                {copied === 'Client ID' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+             <p className="text-xs text-gray-500 mt-1">Your GPT will need to include this in every tracking request.</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-blue-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-blue-600">New Setup Instructions</CardTitle>
+          <CardDescription>
+            Please follow these updated steps carefully to fix the authentication error.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+            <p>1. In the GPT editor, go to 'Add Action'.</p>
+            <p>2. For 'Authentication', select 'API Key'.</p>
+            <p>3. Copy the **Authentication Key** below and paste it into the 'API Key' field in the editor.</p>
+            <p>4. Set the **Header Name** to `apikey`.</p>
+            <p>5. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
+            <p>6. Add the **System Prompt Instruction** to your GPT's instructions.</p>
+            <p>7. Ensure you have a **Privacy Policy URL** set.</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Tracking API</CardTitle>
-          <CardDescription>Configure your GPT to send conversation data for analytics.</CardDescription>
+          <CardTitle>Authentication Key</CardTitle>
+          <CardDescription>This is the public key for the tracking service.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="api-key">API Key</Label>
+            <Label htmlFor="api-key">Key</Label>
             <div className="flex items-center gap-2">
-              <Input id="api-key" value={gpt.client_id} readOnly />
-              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(gpt.client_id, 'API Key')}>
-                {copied === 'API Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <Input id="api-key" value={anonKey} readOnly className="font-mono text-xs"/>
+              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(anonKey, 'Authentication Key')}>
+                {copied === 'Authentication Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-             <p className="text-xs text-gray-500 mt-1">This key authenticates your GPT with the tracking service.</p>
-          </div>
-           <div>
-            <Label>Endpoint URL</Label>
-             <p className="text-sm font-mono bg-gray-100 p-2 rounded">
-              {`https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track`}
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -194,7 +227,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader>
           <CardTitle>Connection Test</CardTitle>
           <CardDescription>
-            Click the button below to verify that your API key is valid and the tracking service is reachable.
+            This tests if your GPT's Client ID is valid.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -210,55 +243,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-orange-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-orange-600">Troubleshooting Checklist</CardTitle>
-          <CardDescription>
-            If the Connection Test above succeeds but your GPT still doesn't call the action, the problem is in your GPT Editor settings. Please check these three things carefully.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div>
-                <h4 className="font-bold">1. Is the Schema 100% Correct?</h4>
-                <p className="text-sm">This is the most common cause of failure. Even a single extra space or character can break it.</p>
-                <ol className="list-decimal list-inside space-y-1 pl-4 text-sm mt-2">
-                    <li>Go to the GPT Editor and open your action settings.</li>
-                    <li><strong>Delete everything</strong> from the 'Schema' text box. Make sure it is completely empty.</li>
-                    <li>Come back to this page and click the "Copy Schema" button again.</li>
-                    <li>Paste the new schema into the empty 'Schema' box.</li>
-                </ol>
-            </div>
-            <div>
-                <h4 className="font-bold">2. Is Authentication Set Up Correctly?</h4>
-                <p className="text-sm">In the 'Authentication' section of your action:</p>
-                 <ul className="list-disc list-inside space-y-1 pl-4 text-sm mt-2">
-                    <li>Authentication Type must be set to <strong>API Key</strong>.</li>
-                    <li>The <strong>API Key</strong> field must contain the key from this page.</li>
-                    <li>The <strong>Header Name</strong> must be set to `X-Api-Key`.</li>
-                </ul>
-            </div>
-            <div>
-                <h4 className="font-bold">3. Is the Privacy Policy URL Set?</h4>
-                <p className="text-sm">OpenAI requires a privacy policy URL for actions to work. You can use your app's main URL (e.g., `https://your-app.vercel.app`) if you don't have a dedicated page.</p>
-            </div>
-             <p className="text-sm font-bold mt-4">Remember to click "Save" in the top right of the GPT Editor and start a new chat to test your changes.</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Setup Instructions</CardTitle>
-          <CardDescription>Follow these steps to enable tracking for your custom GPT.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-            <p>1. In the GPT editor, go to the 'Configure' tab and click 'Add Action'.</p>
-            <p>2. For 'Authentication', select 'API Key'. Paste the **API Key** from above into the 'API Key' field. Set the **Header Name** to `X-Api-Key`.</p>
-            <p>3. Copy the **Tracking Schema** below and paste it into the 'Schema' field.</p>
-            <p>4. Copy the **System Prompt Instruction** below and add it to your GPT's instructions.</p>
-            <p>5. Add a **Privacy Policy URL** in the action editor. This is required for the confirmation dialog to appear.</p>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -266,15 +250,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 <CardDescription>Add this to your GPT's instructions.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(systemPromptInstruction, 'Instruction')}>
-                {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                Copy Instruction
+                {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
+                Copy
             </Button>
         </CardHeader>
         <CardContent>
             <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                <code>
-                    {systemPromptInstruction}
-                </code>
+                <code>{systemPromptInstruction}</code>
             </pre>
         </CardContent>
       </Card>
@@ -287,14 +269,12 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
-                Copy Schema
+                Copy
             </Button>
         </CardHeader>
         <CardContent>
             <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                <code>
-                    {trackingSchema}
-                </code>
+                <code>{trackingSchema}</code>
             </pre>
         </CardContent>
       </Card>
@@ -302,9 +282,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Debug Tracking (Advanced)</CardTitle>
-          <CardDescription>
-            If you want to test the full tracking endpoint directly, run this command in your terminal. A successful test will create a log entry in the "Analytics" tab.
-          </CardDescription>
         </CardHeader>
         <CardContent>
             <Tabs defaultValue="macos" className="w-full">
@@ -314,25 +291,19 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               </TabsList>
               <TabsContent value="macos" className="mt-4">
                  <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                    <code>
-                      {curlCommandMacOS}
-                    </code>
+                    <code>{getCurlCommand('macos')}</code>
                   </pre>
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommandMacOS, 'cURL Command')}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Command
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(getCurlCommand('macos'), 'cURL Command')}>
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
               </TabsContent>
               <TabsContent value="windows" className="mt-4">
-                <p className="text-xs text-gray-500 mb-2">Run this command in <strong>PowerShell</strong>, not the old Command Prompt (cmd.exe).</p>
+                <p className="text-xs text-gray-500 mb-2">Run this command in <strong>PowerShell</strong>.</p>
                  <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                    <code>
-                      {curlCommandWindows}
-                    </code>
+                    <code>{getCurlCommand('windows')}</code>
                   </pre>
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(curlCommandWindows, 'cURL Command')}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Command
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(getCurlCommand('windows'), 'cURL Command')}>
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
               </TabsContent>
             </Tabs>

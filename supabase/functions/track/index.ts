@@ -3,58 +3,55 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 // Get Supabase credentials from environment variables
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    // Add X-Api-Key to the allowed headers for CORS
-    const headers = { ...corsHeaders, 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key' };
-    return new Response(null, { headers });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
     // Initialize Supabase client with service role key to bypass RLS
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get API Key (client_id) from the custom 'X-Api-Key' header
-    const apiKey = req.headers.get('X-Api-Key')
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "Missing 'X-Api-Key' header" }), {
-        status: 401,
+    // Parse the data from the request body
+    const { client_id, user_message, assistant_response } = await req.json()
+
+    if (!client_id) {
+      return new Response(JSON.stringify({ error: "Missing 'client_id' in request body" }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-
-    // Find the gpt_id associated with the API key
-    const { data: gptData, error: gptError } = await supabaseAdmin
-      .from('gpts')
-      .select('id')
-      .eq('client_id', apiKey)
-      .single()
-
-    if (gptError || !gptData) {
-      console.error('Error finding GPT or GPT not found:', gptError?.message)
-      return new Response(JSON.stringify({ error: 'Invalid API Key' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-    const gptId = gptData.id
-
-    // Parse the conversation data from the request body
-    const { user_message, assistant_response } = await req.json()
+    
     if (!assistant_response) {
         return new Response(JSON.stringify({ error: 'Missing assistant_response in body' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
     }
+
+    // Find the gpt_id associated with the client_id
+    const { data: gptData, error: gptError } = await supabaseAdmin
+      .from('gpts')
+      .select('id')
+      .eq('client_id', client_id)
+      .single()
+
+    if (gptError || !gptData) {
+      console.error('Error finding GPT or GPT not found for client_id:', client_id, gptError?.message)
+      return new Response(JSON.stringify({ error: 'Invalid client_id' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const gptId = gptData.id
 
     // Insert the conversation log into the database
     const { error: logError } = await supabaseAdmin

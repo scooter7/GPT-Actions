@@ -3,25 +3,25 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    const headers = { ...corsHeaders, 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key' };
-    return new Response(null, { headers });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    const apiKey = req.headers.get('X-Api-Key')
-    if (!apiKey) {
-      return new Response(JSON.stringify({ success: false, message: "Missing 'X-Api-Key' header." }), {
-        status: 401,
+    const { client_id } = await req.json();
+
+    if (!client_id) {
+      return new Response(JSON.stringify({ success: false, message: "Missing 'client_id' in request body." }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -29,17 +29,17 @@ serve(async (req) => {
     const { data: gptData, error: gptError } = await supabaseAdmin
       .from('gpts')
       .select('name')
-      .eq('client_id', apiKey)
+      .eq('client_id', client_id)
       .single()
 
     if (gptError || !gptData) {
-      return new Response(JSON.stringify({ success: false, message: 'Invalid API Key. It does not match any known GPT.' }), {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid Client ID. It does not match any known GPT.' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    return new Response(JSON.stringify({ success: true, message: `API Key is valid for GPT: "${gptData.name}"` }), {
+    return new Response(JSON.stringify({ success: true, message: `Client ID is valid for GPT: "${gptData.name}"` }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
