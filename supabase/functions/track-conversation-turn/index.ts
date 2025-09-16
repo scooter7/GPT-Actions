@@ -1,3 +1,5 @@
+/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -16,10 +18,10 @@ serve(async (req: Request) => {
 
   try {
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    const { client_id, user_message, assistant_response } = await req.json()
+    const { client_id, user_message, assistant_response, user_session_id } = await req.json()
 
-    if (!client_id || !user_message || !assistant_response) {
-      return new Response(JSON.stringify({ error: "Missing 'client_id', 'user_message', or 'assistant_response'" }), {
+    if (!client_id || !user_message || !assistant_response || !user_session_id) {
+      return new Response(JSON.stringify({ error: "Missing 'client_id', 'user_message', 'assistant_response', or 'user_session_id'" }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -38,10 +40,40 @@ serve(async (req: Request) => {
       })
     }
 
+    // Find the user record for this session
+    let gptUserId = null;
+    const { data: existingUser, error: userFindError } = await supabaseAdmin
+      .from('gpt_users')
+      .select('id')
+      .eq('gpt_id', gptData.id)
+      .eq('email', user_session_id) // Using email field to store session ID
+      .single()
+
+    if (existingUser) {
+      gptUserId = existingUser.id;
+    } else {
+      // Create user record if it doesn't exist (fallback)
+      const { data: newUser, error: userCreateError } = await supabaseAdmin
+        .from('gpt_users')
+        .insert({
+          gpt_id: gptData.id,
+          email: user_session_id,
+        })
+        .select('id')
+        .single()
+
+      if (userCreateError) {
+        console.error('Error creating user record:', userCreateError);
+      } else {
+        gptUserId = newUser.id;
+      }
+    }
+
     const { error: logError } = await supabaseAdmin
       .from('gpt_logs')
       .insert({
         gpt_id: gptData.id,
+        gpt_user_id: gptUserId,
         user_message: user_message,
         assistant_response: assistant_response,
       })

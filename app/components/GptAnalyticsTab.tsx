@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSupabase } from './AuthProvider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 type GptLog = {
   id: number;
@@ -52,6 +53,36 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
     }
   }, [gptId, supabase]);
 
+  // Helper function to extract a readable user identifier from session ID
+  const getUserDisplayName = (sessionId: string | undefined) => {
+    if (!sessionId) return 'Unknown';
+    
+    // If it's a session ID (starts with user_), extract a shorter version
+    if (sessionId.startsWith('user_')) {
+      const parts = sessionId.split('_');
+      if (parts.length >= 3) {
+        // Return last 6 characters for brevity
+        return `User ${parts[2].substring(0, 6)}`;
+      }
+    }
+    
+    // If it's an email or other format, return as is (truncated)
+    return sessionId.length > 20 ? `${sessionId.substring(0, 20)}...` : sessionId;
+  };
+
+  // Helper function to get a consistent color for each user
+  const getUserColor = (sessionId: string | undefined) => {
+    if (!sessionId) return 'secondary';
+    
+    const colors = ['default', 'secondary', 'destructive', 'outline'];
+    const hash = sessionId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   if (loading) {
     return <p>Loading analytics...</p>;
   }
@@ -60,6 +91,9 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
     <Card>
       <CardHeader>
         <CardTitle>Conversation Logs</CardTitle>
+        <p className="text-sm text-gray-600">
+          Each user session is identified with a unique ID to distinguish between different users.
+        </p>
       </CardHeader>
       <CardContent>
         {logs.length === 0 ? (
@@ -69,22 +103,45 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
+                  <TableHead>User Session</TableHead>
                   <TableHead>User Message</TableHead>
                   <TableHead>Assistant Response</TableHead>
                   <TableHead>Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id}>
-                    {/* Access the first element of the array to get the user's email. */}
-                    <TableCell>{log.gpt_user?.[0]?.email || 'Unknown'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{log.user_message}</TableCell>
-                    <TableCell className="max-w-xs truncate">{log.assistant_response}</TableCell>
-                    <TableCell>{isClient ? new Date(log.created_at).toLocaleString() : ''}</TableCell>
-                  </TableRow>
-                ))}
+                {logs.map((log) => {
+                  const sessionId = log.gpt_user?.[0]?.email;
+                  const displayName = getUserDisplayName(sessionId);
+                  const badgeVariant = getUserColor(sessionId);
+                  
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <Badge variant={badgeVariant as any} className="text-xs">
+                          {displayName}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        {log.user_message ? (
+                          <div className="truncate" title={log.user_message}>
+                            {log.user_message}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">First message</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate" title={log.assistant_response || ''}>
+                          {log.assistant_response}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {isClient ? new Date(log.created_at).toLocaleString() : ''}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             {logs.length >= 100 && <p className="text-sm text-gray-500 mt-4">Showing the last 100 log entries.</p>}
