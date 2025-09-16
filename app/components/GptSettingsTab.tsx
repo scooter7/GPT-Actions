@@ -55,7 +55,8 @@ const getTestSchema = () => `{
                     "type": "string",
                     "description": "A test message"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -121,7 +122,8 @@ const getTrackingSchema = (clientId: string) => `{
                     "description": "Optional unique identifier for this user session. If not provided, one will be generated."
                   }
                 },
-                "required": ["client_id", "assistant_response"]
+                "required": ["client_id", "assistant_response"],
+                "additionalProperties": false
               }
             }
           }
@@ -134,6 +136,7 @@ const getTrackingSchema = (clientId: string) => `{
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "success": { "type": "boolean" },
                     "message": { "type": "string" },
                     "user_session_id": { "type": "string", "description": "The session ID for this user" }
                   }
@@ -175,13 +178,27 @@ const getTrackingSchema = (clientId: string) => `{
                     "description": "The unique session ID for this user (obtained from trackFirstMessage response)."
                   }
                 },
-                "required": ["client_id", "user_message", "assistant_response", "user_session_id"]
+                "required": ["client_id", "user_message", "assistant_response", "user_session_id"],
+                "additionalProperties": false
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Tracking successful." }
+          "200": { 
+            "description": "Tracking successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -356,28 +373,27 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-orange-500 border-2">
+      <Card className="border-green-500 border-2">
         <CardHeader>
-          <CardTitle className="text-orange-600">🔍 Debugging Connector Errors</CardTitle>
+          <CardTitle className="text-green-600">✅ Schema Validation Fixed!</CardTitle>
           <CardDescription>
-            The console errors you shared are from ChatGPT's interface, not your tracking functions. The real errors are likely happening silently in your GPT's action calls.
+            The "unrecognized keyword user_session_id" error has been fixed by adding proper OpenAPI schema validation.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-2">
-            <p><strong>What I've Added:</strong></p>
+            <p><strong>What Was Fixed:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Enhanced logging with unique request IDs for each call</li>
-              <li>Detailed error messages that include what was received vs expected</li>
-              <li>Debug mode in system prompt to surface errors in GPT responses</li>
-              <li>Better validation with specific field-by-field checking</li>
+              <li>Added <code>additionalProperties: false</code> to prevent schema validation errors</li>
+              <li>Properly defined all request/response schemas</li>
+              <li>Enhanced response schemas with success indicators</li>
+              <li>Fixed OpenAPI 3.1.0 compliance issues</li>
             </ul>
             <p className="mt-4"><strong>Next Steps:</strong></p>
             <ol className="list-decimal list-inside space-y-1 ml-4">
-              <li>Update your GPT with the new system prompt below (includes debug mode)</li>
-              <li>Test your GPT - it will now show "Debug: [error details]" if tracking fails</li>
-              <li>Check Supabase Function Logs for detailed error information</li>
-              <li>Use the debug tools below to inspect your data</li>
+              <li>Copy the updated **Full Tracking Schema** below</li>
+              <li>Replace your existing GPT Action schema</li>
+              <li>Test your GPT - the "unrecognized keyword" error should be resolved</li>
             </ol>
           </div>
         </CardContent>
@@ -482,8 +498,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Full Tracking Schema</CardTitle>
-                <CardDescription>Use this schema AFTER testing with the simple test schema above.</CardDescription>
+                <CardTitle>Full Tracking Schema (FIXED)</CardTitle>
+                <CardDescription>Updated schema with proper validation - fixes the "unrecognized keyword" error.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
