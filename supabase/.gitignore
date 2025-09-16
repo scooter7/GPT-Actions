@@ -1,0 +1,5 @@
+# Ignore all TypeScript files in supabase directory
+*.ts
+*.js
+*.d.ts
+functions/

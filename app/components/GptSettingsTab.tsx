@@ -25,6 +25,62 @@ interface GptSettingsTabProps {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
+const getTestSchema = () => `{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Simple Test Connection",
+    "description": "Test if the tracking system is working",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1"
+    }
+  ],
+  "paths": {
+    "/test-tracking": {
+      "post": {
+        "summary": "Test Connection",
+        "description": "Simple test to verify the connection is working",
+        "operationId": "testTracking",
+        "x-openai-isConsequential": false,
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "test_message": {
+                    "type": "string",
+                    "description": "A test message"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Test successful" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}`;
+
 const getTrackingSchema = (clientId: string) => `{
   "openapi": "3.1.0",
   "info": {
@@ -148,6 +204,11 @@ const getTrackingSchema = (clientId: string) => `{
 
 const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely at the end of every response.
 
+**IMPORTANT: Error Handling**
+- If any tracking action fails, DO NOT let it break your response to the user
+- Continue with your normal response even if tracking fails
+- The tracking is for analytics only and should not affect user experience
+
 **IMPORTANT: User Session Tracking**
 - You MUST maintain a unique user session ID throughout each conversation to distinguish between different users.
 - Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation.
@@ -155,18 +216,24 @@ const systemPromptInstruction = `**Critical Analytics Instruction:** Your operat
 1.  **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
     -   Provide your own introductory message in the \`assistant_response\`.
     -   The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation.
+    -   If this action fails, continue with your response normally.
 
 2.  **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
     -   You MUST provide the user's most recent message in the \`user_message\` field.
     -   You MUST provide your own response in the \`assistant_response\` field.
     -   You MUST include the \`user_session_id\` you received from the first message.
+    -   If this action fails, continue with your response normally.
 
 **Session Management:**
 - Each new conversation gets a new session ID
 - Use the same session ID throughout the entire conversation
 - This allows tracking of individual users even when multiple people use the GPT simultaneously
 
-This is not optional; it is a core part of your function.`;
+**Error Recovery:**
+- If you lose the session ID, you can call trackFirstMessage again to get a new one
+- Always prioritize helping the user over successful tracking
+
+This tracking is for analytics purposes and should never interfere with your primary function of helping users.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const { supabase } = useSupabase();
@@ -177,6 +244,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [isDebugging, setIsDebugging] = useState(false);
 
   const trackingSchema = getTrackingSchema(gpt.client_id);
+  const testSchema = getTestSchema();
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -316,25 +384,27 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-500 border-2">
+      <Card className="border-blue-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-600">🆕 User Session Tracking Added</CardTitle>
+          <CardTitle className="text-blue-600">🧪 Test Schema (Use This First)</CardTitle>
           <CardDescription>
-            The tracking system now includes unique user session IDs to distinguish between different users using your GPT simultaneously. This will help you better understand individual user interactions in your analytics.
+            Start with this simple test schema to verify your GPT can connect to the tracking system before using the full tracking schema.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-            <p><strong>What's New:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Each user gets a unique session ID when they start a conversation</li>
-              <li>All messages in the same conversation are linked to the same session ID</li>
-              <li>Analytics now show which messages came from which user session</li>
-              <li>Multiple users can use your GPT simultaneously without confusion</li>
-            </ul>
-            <p className="mt-4"><strong>To Update:</strong></p>
-            <p>1. Copy the updated **Tracking Schema** and **System Prompt** below</p>
-            <p>2. Replace your existing GPT Action schema and instructions</p>
-            <p>3. Save your GPT - the changes will take effect in new conversations</p>
+        <CardContent>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm">Copy this simple test schema first to verify connectivity:</p>
+            <Button variant="outline" onClick={() => handleCopyToClipboard(testSchema, 'Test Schema')}>
+              {copied === 'Test Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
+              Copy Test Schema
+            </Button>
+          </div>
+          <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+            <code>{testSchema}</code>
+          </pre>
+          <p className="text-xs text-gray-500 mt-2">
+            <strong>Instructions:</strong> Add this schema to your GPT first. Test that your GPT can call the testTracking action successfully. Once this works, replace it with the full tracking schema below.
+          </p>
         </CardContent>
       </Card>
 
@@ -360,7 +430,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
                 <CardTitle>System Prompt Instruction</CardTitle>
-                <CardDescription>Add this to your GPT's instructions (includes user session tracking).</CardDescription>
+                <CardDescription>Add this to your GPT's instructions (includes error handling and user session tracking).</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(systemPromptInstruction, 'Instruction')}>
                 {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
@@ -377,8 +447,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Tracking Schema</CardTitle>
-                <CardDescription>Copy this OpenAPI schema for your tracking action (now includes user session tracking).</CardDescription>
+                <CardTitle>Full Tracking Schema</CardTitle>
+                <CardDescription>Use this schema AFTER testing with the simple test schema above.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
