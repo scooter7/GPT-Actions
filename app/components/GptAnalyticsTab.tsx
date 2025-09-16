@@ -11,7 +11,8 @@ type GptLog = {
   user_message: string | null;
   assistant_response: string | null;
   created_at: string;
-  gpt_user: { session_id: string | null }[] | null;
+  gpt_user_id: string | null;
+  gpt_users: { session_id: string | null; } | null;
 };
 
 interface GptAnalyticsTabProps {
@@ -31,15 +32,28 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
+      
+      // Updated query to properly join with gpt_users table
       const { data, error } = await supabase
         .from('gpt_logs')
-        .select('id, user_message, assistant_response, created_at, gpt_user:gpt_users(session_id)')
+        .select(`
+          id, 
+          user_message, 
+          assistant_response, 
+          created_at, 
+          gpt_user_id,
+          gpt_users!inner(session_id)
+        `)
         .eq('gpt_id', gptId)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (data) {
-        setLogs(data as GptLog[]);
+        console.log('Fetched logs data:', data);
+        setLogs(data.map(log => ({
+          ...log,
+          gpt_users: Array.isArray(log.gpt_users) ? log.gpt_users[0] : log.gpt_users
+        })) as GptLog[]);
       }
       if (error) {
         console.error("Error fetching GPT logs:", error);
@@ -110,7 +124,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
               </TableHeader>
               <TableBody>
                 {logs.map((log) => {
-                  const sessionId = log.gpt_user?.[0]?.session_id;
+                  const sessionId = log.gpt_users?.session_id;
                   const displayName = getUserDisplayName(sessionId);
                   const badgeVariant = getUserColor(sessionId);
                   
@@ -120,6 +134,10 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
                         <Badge variant={badgeVariant as any} className="text-xs">
                           {displayName}
                         </Badge>
+                        {/* Debug info - remove this after testing */}
+                        <div className="text-xs text-gray-400 mt-1">
+                          ID: {log.gpt_user_id} | Session: {sessionId || 'null'}
+                        </div>
                       </TableCell>
                       <TableCell className="max-w-xs">
                         {log.user_message ? (

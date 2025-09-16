@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSupabase } from '@/app/components/AuthProvider';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Bug } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -173,6 +173,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [debugResult, setDebugResult] = useState<any>(null);
+  const [isDebugging, setIsDebugging] = useState(false);
 
   const trackingSchema = getTrackingSchema(gpt.client_id);
 
@@ -210,6 +212,28 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         setTestResult({ success: false, message: `An unexpected error occurred: ${errorMessage}` });
     } finally {
         setIsTesting(false);
+    }
+  };
+
+  const handleDebugData = async () => {
+    setIsDebugging(true);
+    setDebugResult(null);
+
+    try {
+        const { data, error } = await supabase.functions.invoke('debug-gpt-data', {
+            body: { gpt_id: gpt.id }
+        });
+
+        if (error) {
+            setDebugResult({ error: error.message });
+        } else {
+            setDebugResult(data);
+        }
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setDebugResult({ error: `Debug failed: ${errorMessage}` });
+    } finally {
+        setIsDebugging(false);
     }
   };
 
@@ -256,6 +280,42 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
+      <Card className="border-red-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-red-600">🐛 Debug Tools</CardTitle>
+          <CardDescription>
+            Use these tools to troubleshoot data and connection issues.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button onClick={handleTestConnection} disabled={isTesting} variant="outline">
+              {isTesting ? 'Testing...' : 'Test Connection'}
+            </Button>
+            <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
+              <Bug className="mr-2 h-4 w-4" />
+              {isDebugging ? 'Debugging...' : 'Debug Data'}
+            </Button>
+          </div>
+          
+          {testResult && (
+            <div className={`p-3 rounded-md text-sm ${testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <p className="font-bold">{testResult.success ? 'Connection Success!' : 'Connection Failed'}</p>
+              <p>{testResult.message}</p>
+            </div>
+          )}
+
+          {debugResult && (
+            <div className="bg-gray-100 p-4 rounded-md">
+              <h4 className="font-bold mb-2">Debug Results:</h4>
+              <pre className="text-xs overflow-x-auto">
+                {JSON.stringify(debugResult, null, 2)}
+              </pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="border-green-500 border-2">
         <CardHeader>
           <CardTitle className="text-green-600">🆕 User Session Tracking Added</CardTitle>
@@ -293,26 +353,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection Test</CardTitle>
-          <CardDescription>
-            This tests if your GPT's Client ID is valid.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleTestConnection} disabled={isTesting}>
-            {isTesting ? 'Testing...' : 'Run Connection Test'}
-          </Button>
-          {testResult && (
-            <div className={`mt-4 p-3 rounded-md text-sm ${testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              <p className="font-bold">{testResult.success ? 'Success!' : 'Failed'}</p>
-              <p>{testResult.message}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
