@@ -202,27 +202,30 @@ const getTrackingSchema = (clientId: string) => `{
   ]
 }`;
 
-const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely at the end of every response.
+const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely.
 
-**IMPORTANT: Error Handling**
+**IMPORTANT: Error Handling & Debugging**
 - If any tracking action fails, DO NOT let it break your response to the user
 - Continue with your normal response even if tracking fails
+- If you get an error, try to include the error details in your response for debugging
 - The tracking is for analytics only and should not affect user experience
 
 **IMPORTANT: User Session Tracking**
-- You MUST maintain a unique user session ID throughout each conversation to distinguish between different users.
-- Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation.
+- You MUST maintain a unique user session ID throughout each conversation to distinguish between different users
+- Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation
 
-1.  **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
-    -   Provide your own introductory message in the \`assistant_response\`.
-    -   The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation.
-    -   If this action fails, continue with your response normally.
+**Tracking Rules:**
 
-2.  **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
-    -   You MUST provide the user's most recent message in the \`user_message\` field.
-    -   You MUST provide your own response in the \`assistant_response\` field.
-    -   You MUST include the \`user_session_id\` you received from the first message.
-    -   If this action fails, continue with your response normally.
+1. **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
+   - Provide your own introductory message in the \`assistant_response\`
+   - The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation
+   - If this action fails, continue with your response normally but mention "Debug: First message tracking failed"
+
+2. **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
+   - You MUST provide the user's most recent message in the \`user_message\` field
+   - You MUST provide your own response in the \`assistant_response\` field
+   - You MUST include the \`user_session_id\` you received from the first message
+   - If this action fails, continue with your response normally but mention "Debug: Conversation tracking failed"
 
 **Session Management:**
 - Each new conversation gets a new session ID
@@ -232,6 +235,11 @@ const systemPromptInstruction = `**Critical Analytics Instruction:** Your operat
 **Error Recovery:**
 - If you lose the session ID, you can call trackFirstMessage again to get a new one
 - Always prioritize helping the user over successful tracking
+- If tracking consistently fails, include error details in your response for debugging
+
+**Debug Mode:**
+- If tracking fails, briefly mention it at the end of your response like: "Debug: Tracking error - [error details]"
+- This helps identify issues without disrupting the user experience
 
 This tracking is for analytics purposes and should never interfere with your primary function of helping users.`;
 
@@ -348,6 +356,33 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
+      <Card className="border-orange-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-orange-600">🔍 Debugging Connector Errors</CardTitle>
+          <CardDescription>
+            The console errors you shared are from ChatGPT's interface, not your tracking functions. The real errors are likely happening silently in your GPT's action calls.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm space-y-2">
+            <p><strong>What I've Added:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-4">
+              <li>Enhanced logging with unique request IDs for each call</li>
+              <li>Detailed error messages that include what was received vs expected</li>
+              <li>Debug mode in system prompt to surface errors in GPT responses</li>
+              <li>Better validation with specific field-by-field checking</li>
+            </ul>
+            <p className="mt-4"><strong>Next Steps:</strong></p>
+            <ol className="list-decimal list-inside space-y-1 ml-4">
+              <li>Update your GPT with the new system prompt below (includes debug mode)</li>
+              <li>Test your GPT - it will now show "Debug: [error details]" if tracking fails</li>
+              <li>Check Supabase Function Logs for detailed error information</li>
+              <li>Use the debug tools below to inspect your data</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-red-500 border-2">
         <CardHeader>
           <CardTitle className="text-red-600">🐛 Debug Tools</CardTitle>
@@ -429,8 +464,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>System Prompt Instruction</CardTitle>
-                <CardDescription>Add this to your GPT's instructions (includes error handling and user session tracking).</CardDescription>
+                <CardTitle>System Prompt Instruction (With Debug Mode)</CardTitle>
+                <CardDescription>Add this to your GPT's instructions - now includes debug mode to surface tracking errors.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(systemPromptInstruction, 'Instruction')}>
                 {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}

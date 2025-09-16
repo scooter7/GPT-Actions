@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Future Next.js configuration options can be added here.
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  webpack: (config) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/supabase/**', '**/node_modules/**']
+    }
+    return config
+  }
 };
 
 module.exports = nextConfig;

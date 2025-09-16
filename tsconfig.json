@@ -27,7 +27,7 @@
     "next-env.d.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
-    "components/**/*.ts",
+    "components/**/*.ts", 
     "components/**/*.tsx",
     "lib/**/*.ts",
     "lib/**/*.tsx",
@@ -35,6 +35,10 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase"
+    "supabase",
+    "supabase/**",
+    "supabase/**/*",
+    "**/supabase/**",
+    "**/*.supabase.*"
   ]
 }
