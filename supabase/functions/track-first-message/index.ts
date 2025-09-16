@@ -58,7 +58,7 @@ serve(async (req: Request) => {
       .from('gpt_users')
       .select('id')
       .eq('gpt_id', gptData.id)
-      .eq('email', sessionId) // Using email field to store session ID for now
+      .eq('session_id', sessionId)
       .single()
 
     if (existingUser) {
@@ -69,7 +69,8 @@ serve(async (req: Request) => {
         .from('gpt_users')
         .insert({
           gpt_id: gptData.id,
-          email: sessionId, // Store session ID in email field temporarily
+          email: `session_${sessionId}@temp.local`, // Placeholder email since it's required
+          session_id: sessionId,
         })
         .select('id')
         .single()

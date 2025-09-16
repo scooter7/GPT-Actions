@@ -11,8 +11,7 @@ type GptLog = {
   user_message: string | null;
   assistant_response: string | null;
   created_at: string;
-  // The Supabase client returns an array for this relationship, so we'll type it as such.
-  gpt_user: { email: string }[] | null;
+  gpt_user: { session_id: string | null }[] | null;
 };
 
 interface GptAnalyticsTabProps {
@@ -34,7 +33,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
       setLoading(true);
       const { data, error } = await supabase
         .from('gpt_logs')
-        .select('id, user_message, assistant_response, created_at, gpt_user:gpt_users(email)')
+        .select('id, user_message, assistant_response, created_at, gpt_user:gpt_users(session_id)')
         .eq('gpt_id', gptId)
         .order('created_at', { ascending: false })
         .limit(100);
@@ -54,7 +53,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
   }, [gptId, supabase]);
 
   // Helper function to extract a readable user identifier from session ID
-  const getUserDisplayName = (sessionId: string | undefined) => {
+  const getUserDisplayName = (sessionId: string | null | undefined) => {
     if (!sessionId) return 'Unknown';
     
     // If it's a session ID (starts with user_), extract a shorter version
@@ -71,7 +70,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
   };
 
   // Helper function to get a consistent color for each user
-  const getUserColor = (sessionId: string | undefined) => {
+  const getUserColor = (sessionId: string | null | undefined) => {
     if (!sessionId) return 'secondary';
     
     const colors = ['default', 'secondary', 'destructive', 'outline'];
@@ -111,7 +110,7 @@ export default function GptAnalyticsTab({ gptId }: GptAnalyticsTabProps) {
               </TableHeader>
               <TableBody>
                 {logs.map((log) => {
-                  const sessionId = log.gpt_user?.[0]?.email;
+                  const sessionId = log.gpt_user?.[0]?.session_id;
                   const displayName = getUserDisplayName(sessionId);
                   const badgeVariant = getUserColor(sessionId);
                   
