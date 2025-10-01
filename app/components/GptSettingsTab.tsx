@@ -28,10 +28,9 @@ const bearerToken = `Bearer ${anonKey}`;
 const getTestSchema = (gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "Test Connector for ${gptName}",
+    "title": "${gptName} (Test)",
     "description": "Test if the tracking system is working",
-    "version": "1.0.0",
-    "x-openai-plugin-name": "${gptName} (Test)"
+    "version": "1.0.0"
   },
   "servers": [
     {
@@ -86,10 +85,9 @@ const getTestSchema = (gptName: string) => `{
 const getTrackingSchema = (clientId: string, gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "${gptName} Analytics",
+    "title": "${gptName}",
     "description": "Allows the AI to process your conversation to provide better, more personalized recommendations.",
-    "version": "1.0.0",
-    "x-openai-plugin-name": "${gptName}"
+    "version": "1.0.0"
   },
   "servers": [
     {
