@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSupabase } from '@/app/components/AuthProvider';
-import { Copy, Check, Bug } from 'lucide-react';
+import { Copy, Check, Bug, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -286,6 +286,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [debugResult, setDebugResult] = useState<any>(null);
   const [isDebugging, setIsDebugging] = useState(false);
+  const [manualTestResult, setManualTestResult] = useState<any>(null);
+  const [isManualTesting, setIsManualTesting] = useState(false);
 
   const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name);
   const testSchema = getTestSchema(gpt.name);
@@ -324,6 +326,33 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         setTestResult({ success: false, message: `An unexpected error occurred: ${errorMessage}` });
     } finally {
         setIsTesting(false);
+    }
+  };
+
+  const handleManualTrackingTest = async () => {
+    setIsManualTesting(true);
+    setManualTestResult(null);
+
+    try {
+        // Test the track-first-message function
+        const { data, error } = await supabase.functions.invoke('track-first-message', {
+            body: { 
+              client_id: gpt.client_id,
+              assistant_response: "This is a test first message from the dashboard",
+              user_session_id: "dashboard_test_" + Date.now()
+            }
+        });
+
+        if (error) {
+            setManualTestResult({ success: false, error: error.message, data: null });
+        } else {
+            setManualTestResult({ success: true, error: null, data });
+        }
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setManualTestResult({ success: false, error: errorMessage, data: null });
+    } finally {
+        setIsManualTesting(false);
     }
   };
 
@@ -392,56 +421,51 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-500 border-2">
+      <Card className="border-yellow-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-600">✅ Authentication Working!</CardTitle>
+          <CardTitle className="text-yellow-600">⚠️ Tracking Issue Detected</CardTitle>
           <CardDescription>
-            Great news! Your GPT is now successfully connecting to the tracking API. The only remaining issue is the connector display name.
+            I can see your GPT is calling the tracking functions, but the JSON is showing in the chat and data isn't being saved properly.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-2">
-            <p><strong>What's Working:</strong></p>
+            <p><strong>What I can see:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>✅ API authentication is successful</li>
-              <li>✅ Your GPT can call the tracking functions</li>
-              <li>✅ No more 403 errors</li>
+              <li>✅ Your GPT is calling the tracking functions</li>
+              <li>✅ The JSON data is being sent correctly</li>
+              <li>❌ The JSON is showing in the chat (should be hidden)</li>
+              <li>❌ Data might not be saving to analytics</li>
             </ul>
-            <p className="mt-4"><strong>Next Try:</strong></p>
-            <ol className="list-decimal list-inside space-y-1 ml-4">
-              <li>Copy the updated schema below (now uses multiple naming strategies)</li>
-              <li>Replace your existing GPT Action schema</li>
-              <li>This version tries several different OpenAI naming conventions</li>
-            </ol>
+            <p className="mt-4"><strong>Let's debug this:</strong></p>
+            <div className="flex gap-2">
+              <Button onClick={handleManualTrackingTest} disabled={isManualTesting} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {isManualTesting ? 'Testing...' : 'Test Tracking Function'}
+              </Button>
+              <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
+                <Bug className="mr-2 h-4 w-4" />
+                {isDebugging ? 'Debugging...' : 'Check Current Data'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-orange-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-orange-600">💡 Alternative Solution</CardTitle>
-          <CardDescription>
-            If the display name still doesn't change, this might be an OpenAI limitation. The functionality is working perfectly - it's just a cosmetic issue.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm space-y-2">
-            <p><strong>What we know:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Your tracking is working 100% correctly</li>
-              <li>Data is being logged to your analytics</li>
-              <li>The "Talked to qrhafhfqdjcrqsxnkaij.supabase.co" is just how OpenAI displays it</li>
-              <li>Users won't see this message - it's only visible during testing</li>
-            </ul>
-            <p className="mt-4"><strong>Consider:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>The core functionality is working perfectly</li>
-              <li>This display name only appears in debug/testing mode</li>
-              <li>End users using your GPT won't see this technical message</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      {manualTestResult && (
+        <Card className={`border-2 ${manualTestResult.success ? 'border-green-500' : 'border-red-500'}`}>
+          <CardHeader>
+            <CardTitle className={manualTestResult.success ? 'text-green-600' : 'text-red-600'}>
+              Manual Test Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
+              {JSON.stringify(manualTestResult, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-red-500 border-2">
         <CardHeader>
@@ -454,10 +478,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div className="flex gap-2">
             <Button onClick={handleTestConnection} disabled={isTesting} variant="outline">
               {isTesting ? 'Testing...' : 'Test Connection'}
-            </Button>
-            <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
-              <Bug className="mr-2 h-4 w-4" />
-              {isDebugging ? 'Debugging...' : 'Debug Data'}
             </Button>
           </div>
           
