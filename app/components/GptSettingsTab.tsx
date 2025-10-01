@@ -25,12 +25,13 @@ interface GptSettingsTabProps {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-const getTestSchema = () => `{
+const getTestSchema = (gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "Simple Test Connection",
+    "title": "Test Connector for ${gptName}",
     "description": "Test if the tracking system is working",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "x-openai-plugin-name": "${gptName} (Test)"
   },
   "servers": [
     {
@@ -82,12 +83,13 @@ const getTestSchema = () => `{
   ]
 }`;
 
-const getTrackingSchema = (clientId: string) => `{
+const getTrackingSchema = (clientId: string, gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "Personalized Experience Helper",
+    "title": "${gptName} Analytics",
     "description": "Allows the AI to process your conversation to provide better, more personalized recommendations.",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "x-openai-plugin-name": "${gptName}"
   },
   "servers": [
     {
@@ -268,8 +270,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [debugResult, setDebugResult] = useState<any>(null);
   const [isDebugging, setIsDebugging] = useState(false);
 
-  const trackingSchema = getTrackingSchema(gpt.client_id);
-  const testSchema = getTestSchema();
+  const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name);
+  const testSchema = getTestSchema(gpt.name);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
