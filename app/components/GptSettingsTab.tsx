@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSupabase } from '@/app/components/AuthProvider';
-import { Copy, Check, Bug, RefreshCw } from 'lucide-react';
+import { Copy, Check, Bug, RefreshCw, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,15 @@ interface GptSettingsTabProps {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-const getTestSchema = (gptName: string) => `{
+// Default to Supabase URL, but allow for custom domain
+const getApiUrl = (useCustomDomain = false) => {
+  if (useCustomDomain) {
+    return "https://api.collegexpress.com/functions/v1";
+  }
+  return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
+};
+
+const getTestSchema = (gptName: string, useCustomDomain = false) => `{
   "openapi": "3.1.0",
   "info": {
     "title": "${gptName} Analytics",
@@ -34,7 +42,7 @@ const getTestSchema = (gptName: string) => `{
   },
   "servers": [
     {
-      "url": "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1"
+      "url": "${getApiUrl(useCustomDomain)}"
     }
   ],
   "paths": {
@@ -82,7 +90,7 @@ const getTestSchema = (gptName: string) => `{
   ]
 }`;
 
-const getTrackingSchema = (clientId: string, gptName: string) => `{
+const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = false) => `{
   "openapi": "3.1.0",
   "info": {
     "title": "${gptName}",
@@ -94,7 +102,7 @@ const getTrackingSchema = (clientId: string, gptName: string) => `{
   },
   "servers": [
     {
-      "url": "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1",
+      "url": "${getApiUrl(useCustomDomain)}",
       "description": "${gptName}"
     }
   ],
@@ -288,9 +296,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [isDebugging, setIsDebugging] = useState(false);
   const [manualTestResult, setManualTestResult] = useState<any>(null);
   const [isManualTesting, setIsManualTesting] = useState(false);
+  const [useCustomDomain, setUseCustomDomain] = useState(false);
 
-  const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name);
-  const testSchema = getTestSchema(gpt.name);
+  const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain);
+  const testSchema = getTestSchema(gpt.name, useCustomDomain);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -379,6 +388,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   };
 
   const getCurlCommand = (platform: 'macos' | 'windows') => {
+    const apiUrl = getApiUrl(useCustomDomain);
     const body = JSON.stringify({
       client_id: gpt.client_id,
       user_message: "This is a test user message.",
@@ -388,10 +398,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
     if (platform === 'windows') {
       const escapedBody = body.replace(/"/g, '`"');
-      return `curl.exe -X POST "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-conversation-turn" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
+      return `curl.exe -X POST "${apiUrl}/track-conversation-turn" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
     }
 
-    return `curl -X POST 'https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-conversation-turn' \\
+    return `curl -X POST '${apiUrl}/track-conversation-turn' \\
   -H 'Authorization: ${bearerToken}' \\
   -H 'Content-Type: application/json' \\
   -d '${body}'`;
@@ -417,6 +427,58 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               </Button>
             </div>
              <p className="text-xs text-gray-500 mt-1">Your GPT will need to include this in every tracking request body.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-blue-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-blue-600">🌐 Custom Domain Setup (Supabase Pro)</CardTitle>
+          <CardDescription>
+            Set up a custom domain to replace "qrhafhfqdjcrqsxnkaij.supabase.co" with something like "api.collegexpress.com"
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm space-y-3">
+            <p><strong>Step 1:</strong> Go to your Supabase Dashboard</p>
+            <Button variant="outline" size="sm" onClick={() => window.open('https://supabase.com/dashboard/project/qrhafhfqdjcrqsxnkaij/settings/general', '_blank')}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Supabase Settings
+            </Button>
+            
+            <p><strong>Step 2:</strong> Look for "Custom Domains" under:</p>
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>Project Settings → API → Custom Domains</li>
+              <li>Or Edge Functions → Custom Domains</li>
+            </ul>
+            
+            <p><strong>Step 3:</strong> Add your subdomain (suggestions):</p>
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li><code>api.collegexpress.com</code></li>
+              <li><code>connector.collegexpress.com</code></li>
+              <li><code>gpt.collegexpress.com</code></li>
+            </ul>
+            
+            <p><strong>Step 4:</strong> Configure DNS with the CNAME record Supabase provides</p>
+            
+            <p><strong>Step 5:</strong> Once verified, toggle the switch below and copy the updated schema:</p>
+            
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="custom-domain"
+                checked={useCustomDomain}
+                onChange={(e) => setUseCustomDomain(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="custom-domain">Use custom domain (api.collegexpress.com) in schemas</Label>
+            </div>
+            
+            {useCustomDomain && (
+              <div className="bg-green-100 p-3 rounded-md text-green-800 text-sm">
+                ✅ Schemas below now use: <code>api.collegexpress.com</code>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -562,8 +624,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Enhanced Tracking Schema (Multiple Naming Strategies)</CardTitle>
-                <CardDescription>This version tries multiple OpenAI naming conventions to force a friendly display name.</CardDescription>
+                <CardTitle>Enhanced Tracking Schema {useCustomDomain ? '(Custom Domain)' : '(Default)'}</CardTitle>
+                <CardDescription>
+                  {useCustomDomain 
+                    ? 'Using api.collegexpress.com - make sure your custom domain is set up first!'
+                    : 'Using default Supabase URL - toggle custom domain above when ready'
+                  }
+                </CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
