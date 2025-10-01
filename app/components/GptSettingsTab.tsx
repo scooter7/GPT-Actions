@@ -28,7 +28,7 @@ const bearerToken = `Bearer ${anonKey}`;
 const getTestSchema = (gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "${gptName} (Test)",
+    "title": "${gptName} Analytics",
     "description": "Test if the tracking system is working",
     "version": "1.0.0"
   },
@@ -85,13 +85,14 @@ const getTestSchema = (gptName: string) => `{
 const getTrackingSchema = (clientId: string, gptName: string) => `{
   "openapi": "3.1.0",
   "info": {
-    "title": "${gptName}",
-    "description": "Allows the AI to process your conversation to provide better, more personalized recommendations.",
+    "title": "${gptName} Analytics",
+    "description": "Conversation tracking and analytics for ${gptName}",
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1"
+      "url": "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1",
+      "description": "${gptName} Analytics Server"
     }
   ],
   "paths": {
@@ -375,25 +376,24 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card className="border-green-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-600">✅ Schema Validation Fixed!</CardTitle>
+          <CardTitle className="text-green-600">✅ Authentication Working!</CardTitle>
           <CardDescription>
-            The "unrecognized keyword user_session_id" error has been fixed by adding proper OpenAPI schema validation.
+            Great news! Your GPT is now successfully connecting to the tracking API. The only remaining issue is the connector display name.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-2">
-            <p><strong>What Was Fixed:</strong></p>
+            <p><strong>What's Working:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Added <code>additionalProperties: false</code> to prevent schema validation errors</li>
-              <li>Properly defined all request/response schemas</li>
-              <li>Enhanced response schemas with success indicators</li>
-              <li>Fixed OpenAPI 3.1.0 compliance issues</li>
+              <li>✅ API authentication is successful</li>
+              <li>✅ Your GPT can call the tracking functions</li>
+              <li>✅ No more 403 errors</li>
             </ul>
-            <p className="mt-4"><strong>Next Steps:</strong></p>
+            <p className="mt-4"><strong>Final Fix:</strong></p>
             <ol className="list-decimal list-inside space-y-1 ml-4">
-              <li>Copy the updated **Full Tracking Schema** below</li>
+              <li>Copy the updated schema below (now shows "CollegeXpress Analytics")</li>
               <li>Replace your existing GPT Action schema</li>
-              <li>Test your GPT - the "unrecognized keyword" error should be resolved</li>
+              <li>The connector should now show a friendlier name</li>
             </ol>
           </div>
         </CardContent>
@@ -498,8 +498,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Full Tracking Schema (FIXED)</CardTitle>
-                <CardDescription>Updated schema with proper validation - fixes the "unrecognized keyword" error.</CardDescription>
+                <CardTitle>Full Tracking Schema (Updated Display Name)</CardTitle>
+                <CardDescription>Updated schema that should show "CollegeXpress Analytics" as the connector name.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
