@@ -641,35 +641,38 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-500 border-2">
+      <Card className="border-red-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-600 flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            Custom Domain Active!
+          <CardTitle className="text-red-600 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            DNS Resolution Failed
           </CardTitle>
           <CardDescription>
-            Great news! Your custom domain is now active in Supabase. Let's test if it's working properly.
+            We've detected a `net::ERR_NAME_NOT_RESOLVED` error. This means your custom domain's DNS records are not correctly configured.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-3">
-            <div className="bg-green-100 p-3 rounded-md text-green-800">
-              <p><strong>🎉 Status Update:</strong></p>
-              <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
-                <li>✅ Custom domain is active in Supabase</li>
-                <li>✅ DNS records are properly configured</li>
-                <li>🧪 Ready to test the actual functionality</li>
-              </ul>
+            <div className="bg-yellow-100 p-3 rounded-md text-yellow-800">
+              <p><strong>🔍 What this error means:</strong></p>
+              <p className="mt-1">Your browser could not find the server for `college-advisor.collegexpress.com`. This is a fundamental DNS issue, not a problem with Supabase or the application code.</p>
+            </div>
+            
+            <div className="bg-blue-100 p-3 rounded-md text-blue-800">
+              <p><strong>🔧 How to fix it:</strong></p>
+              <p className="mt-1">Please go to your domain provider (where you manage `collegexpress.com`) and ensure you have the following **CNAME record** set up exactly:</p>
+              <div className="bg-gray-100 p-2 rounded mt-2 text-gray-800">
+                <p><strong>Type:</strong> <code className="font-mono">CNAME</code></p>
+                <p><strong>Name/Host:</strong> <code className="font-mono">college-advisor</code></p>
+                <p><strong>Value/Target:</strong> <code className="font-mono">qrhafhfqdjcrqsxnkaij.supabase.co</code></p>
+              </div>
+              <p className="text-xs mt-2">Note: DNS changes can take some time to propagate across the internet.</p>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="default">
+              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {isTestingCustomDomain ? 'Testing...' : 'Test Custom Domain Now'}
-              </Button>
-              <Button onClick={handleDomainDiagnostics} disabled={isDiagnosing} variant="outline">
-                <Bug className="mr-2 h-4 w-4" />
-                {isDiagnosing ? 'Running Diagnostics...' : 'Full Diagnostics'}
+                {isTestingCustomDomain ? 'Retesting...' : 'Retest Domain'}
               </Button>
             </div>
           </div>
@@ -679,7 +682,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       {customDomainTest && (
         <Card className="border-2 border-blue-500">
           <CardHeader>
-            <CardTitle className="text-blue-600">Custom Domain Test Results</CardTitle>
+            <CardTitle className="text-blue-600">Domain Test Results</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -698,7 +701,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
-                  <p className="font-bold">🎉 Success! Your custom domain is working!</p>
+                  <p className="font-bold">🎉 Success! Your custom domain is now resolving correctly!</p>
                   <p className="text-sm mt-1">You can now use the custom domain schemas below with confidence.</p>
                 </div>
               )}
@@ -706,148 +709,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           </CardContent>
         </Card>
       )}
-
-      {domainDiagnostics && (
-        <Card className="border-2 border-purple-500">
-          <CardHeader>
-            <CardTitle className="text-purple-600">🔬 Full Domain Diagnostics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-bold text-sm mb-2">Recommendations:</h4>
-                <div className="bg-gray-100 p-3 rounded-md">
-                  {domainDiagnostics.recommendations?.map((rec: string, index: number) => (
-                    <p key={index} className="text-sm">{rec}</p>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold text-sm">Full Test Results:</h4>
-                <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-x-auto">
-                  {JSON.stringify(domainDiagnostics, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="border-blue-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-blue-600">🎯 Domain Configuration</CardTitle>
-          <CardDescription>
-            Choose whether to use your custom domain or the direct Supabase URL in your schemas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm space-y-3">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="custom-domain"
-                checked={useCustomDomain}
-                onChange={(e) => setUseCustomDomain(e.target.checked)}
-                className="rounded"
-              />
-              <Label htmlFor="custom-domain">Use custom domain (college-advisor.collegexpress.com) in schemas</Label>
-            </div>
-            
-            {useCustomDomain && (
-              <div className="bg-green-100 p-3 rounded-md text-green-800 text-sm">
-                🎉 <strong>Using custom domain!</strong> Schemas below use: <code>college-advisor.collegexpress.com</code>
-                <br />
-                <strong>✅ Recommended:</strong> Since your custom domain is now active, this is the preferred option.
-              </div>
-            )}
-            
-            {!useCustomDomain && (
-              <div className="bg-yellow-100 p-3 rounded-md text-yellow-800 text-sm">
-                ⚠️ <strong>Using fallback:</strong> Schemas use direct Supabase URL. This will work but shows the long Supabase URL to users.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {manualTestResult && (
-        <Card className={`border-2 ${manualTestResult.success ? 'border-green-500' : 'border-red-500'}`}>
-          <CardHeader>
-            <CardTitle className={manualTestResult.success ? 'text-green-600' : 'text-red-600'}>
-              Manual Test Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-              {JSON.stringify(manualTestResult, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="border-red-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-red-600">🐛 Debug Tools</CardTitle>
-          <CardDescription>
-            Use these tools to troubleshoot data and connection issues.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Button onClick={handleTestConnection} disabled={isTesting} variant="outline">
-              {isTesting ? 'Testing...' : 'Test Connection'}
-            </Button>
-            <Button onClick={handleManualTrackingTest} disabled={isManualTesting} variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {isManualTesting ? 'Testing...' : 'Test Tracking Function'}
-            </Button>
-            <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
-              <Bug className="mr-2 h-4 w-4" />
-              {isDebugging ? 'Debugging...' : 'Check Current Data'}
-            </Button>
-          </div>
-          
-          {testResult && (
-            <div className={`p-3 rounded-md text-sm ${testResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              <p className="font-bold">{testResult.success ? 'Connection Success!' : 'Connection Failed'}</p>
-              <p>{testResult.message}</p>
-            </div>
-          )}
-
-          {debugResult && (
-            <div className="bg-gray-100 p-4 rounded-md">
-              <h4 className="font-bold mb-2">Debug Results:</h4>
-              <pre className="text-xs overflow-x-auto">
-                {JSON.stringify(debugResult, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-blue-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-blue-600">🧪 Custom Domain Test Schema</CardTitle>
-          <CardDescription>
-            Use this simple schema to test if your custom domain is working before using the full tracking schema.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm">Test your custom domain with this simple schema:</p>
-            <Button variant="outline" onClick={() => handleCopyToClipboard(testSchema, 'Test Schema')}>
-              {copied === 'Test Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
-              Copy Test Schema
-            </Button>
-          </div>
-          <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-            <code>{testSchema}</code>
-          </pre>
-          <p className="text-xs text-gray-500 mt-2">
-            <strong>Instructions:</strong> Add this schema to your GPT and try calling the testCustomDomain action. If it works, your custom domain is properly configured!
-          </p>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -870,8 +731,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>System Prompt Instruction (With Debug Mode)</CardTitle>
-                <CardDescription>Add this to your GPT's instructions - now includes debug mode to surface tracking errors.</CardDescription>
+                <CardTitle>System Prompt Instruction</CardTitle>
+                <CardDescription>Add this to your GPT's instructions for conversation tracking.</CardDescription>
             </div>
             <Button variant="outline" onClick={() => handleCopyToClipboard(systemPromptInstruction, 'Instruction')}>
                 {copied === 'Instruction' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
@@ -888,11 +749,11 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Enhanced Tracking Schema {useCustomDomain ? '(Custom Domain)' : '(Direct Supabase)'}</CardTitle>
+                <CardTitle>Tracking Schema</CardTitle>
                 <CardDescription>
                   {useCustomDomain 
-                    ? '🎉 Using college-advisor.collegexpress.com - your branded custom domain!'
-                    : '⚠️ Using direct Supabase URL - works but shows Supabase branding'
+                    ? 'Using your custom domain. This will only work after the DNS issue is fixed.'
+                    : 'Using the direct Supabase URL as a fallback.'
                   }
                 </CardDescription>
             </div>
@@ -902,40 +763,19 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             </Button>
         </CardHeader>
         <CardContent>
+            <div className="flex items-center space-x-2 mb-4">
+              <input
+                type="checkbox"
+                id="custom-domain"
+                checked={useCustomDomain}
+                onChange={(e) => setUseCustomDomain(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="custom-domain">Use custom domain in schema</Label>
+            </div>
             <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
                 <code>{trackingSchema}</code>
             </pre>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Debug Tracking (Advanced)</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Tabs defaultValue="macos" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="macos">macOS / Linux</TabsTrigger>
-                <TabsTrigger value="windows">Windows</TabsTrigger>
-              </TabsList>
-              <TabsContent value="macos" className="mt-4">
-                 <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                    <code>{getCurlCommand('macos')}</code>
-                  </pre>
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(getCurlCommand('macos'), 'cURL Command')}>
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                  </Button>
-              </TabsContent>
-              <TabsContent value="windows" className="mt-4">
-                <p className="text-xs text-gray-500 mb-2">Run this command in <strong>PowerShell</strong>.</p>
-                 <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                    <code>{getCurlCommand('windows')}</code>
-                  </pre>
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => handleCopyToClipboard(getCurlCommand('windows'), 'cURL Command')}>
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                  </Button>
-              </TabsContent>
-            </Tabs>
         </CardContent>
       </Card>
     </div>
