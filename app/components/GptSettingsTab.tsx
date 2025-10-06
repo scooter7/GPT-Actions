@@ -28,7 +28,7 @@ const bearerToken = `Bearer ${anonKey}`;
 // Default to Supabase URL, but allow for custom domain
 const getApiUrl = (useCustomDomain = false) => {
   if (useCustomDomain) {
-    return "https://api.collegexpress.com/functions/v1";
+    return "https://college-advisor.collegexpress.com/functions/v1";
   }
   return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
 };
@@ -431,37 +431,21 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-blue-500 border-2">
+      <Card className="border-green-500 border-2">
         <CardHeader>
-          <CardTitle className="text-blue-600">🌐 Custom Domain Setup (Supabase Pro)</CardTitle>
+          <CardTitle className="text-green-600">✅ Custom Domain Active!</CardTitle>
           <CardDescription>
-            Set up a custom domain to replace "qrhafhfqdjcrqsxnkaij.supabase.co" with something like "api.collegexpress.com"
+            Your custom domain <code>college-advisor.collegexpress.com</code> is active and serving traffic.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-3">
-            <p><strong>Step 1:</strong> Go to your Supabase Dashboard</p>
-            <Button variant="outline" size="sm" onClick={() => window.open('https://supabase.com/dashboard/project/qrhafhfqdjcrqsxnkaij/settings/general', '_blank')}>
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open Supabase Settings
-            </Button>
+            <div className="bg-green-100 p-3 rounded-md text-green-800">
+              <p><strong>✅ Domain Status:</strong> Active and serving traffic</p>
+              <p><strong>🌐 Your Domain:</strong> <code>college-advisor.collegexpress.com</code></p>
+            </div>
             
-            <p><strong>Step 2:</strong> Look for "Custom Domains" under:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Project Settings → API → Custom Domains</li>
-              <li>Or Edge Functions → Custom Domains</li>
-            </ul>
-            
-            <p><strong>Step 3:</strong> Add your subdomain (suggestions):</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li><code>api.collegexpress.com</code></li>
-              <li><code>connector.collegexpress.com</code></li>
-              <li><code>gpt.collegexpress.com</code></li>
-            </ul>
-            
-            <p><strong>Step 4:</strong> Configure DNS with the CNAME record Supabase provides</p>
-            
-            <p><strong>Step 5:</strong> Once verified, toggle the switch below and copy the updated schema:</p>
+            <p><strong>Next Step:</strong> Toggle the switch below to use your custom domain in the schemas:</p>
             
             <div className="flex items-center space-x-2">
               <input
@@ -471,12 +455,20 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 onChange={(e) => setUseCustomDomain(e.target.checked)}
                 className="rounded"
               />
-              <Label htmlFor="custom-domain">Use custom domain (api.collegexpress.com) in schemas</Label>
+              <Label htmlFor="custom-domain">Use custom domain (college-advisor.collegexpress.com) in schemas</Label>
             </div>
             
             {useCustomDomain && (
-              <div className="bg-green-100 p-3 rounded-md text-green-800 text-sm">
-                ✅ Schemas below now use: <code>api.collegexpress.com</code>
+              <div className="bg-blue-100 p-3 rounded-md text-blue-800 text-sm">
+                🎉 <strong>Perfect!</strong> Schemas below now use: <code>college-advisor.collegexpress.com</code>
+                <br />
+                <strong>Result:</strong> Users will see "Talked to college-advisor.collegexpress.com" instead of the long Supabase URL!
+              </div>
+            )}
+            
+            {!useCustomDomain && (
+              <div className="bg-yellow-100 p-3 rounded-md text-yellow-800 text-sm">
+                ⚠️ <strong>Still using default URL:</strong> Toggle the checkbox above to switch to your custom domain.
               </div>
             )}
           </div>
@@ -627,8 +619,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                 <CardTitle>Enhanced Tracking Schema {useCustomDomain ? '(Custom Domain)' : '(Default)'}</CardTitle>
                 <CardDescription>
                   {useCustomDomain 
-                    ? 'Using api.collegexpress.com - make sure your custom domain is set up first!'
-                    : 'Using default Supabase URL - toggle custom domain above when ready'
+                    ? 'Using college-advisor.collegexpress.com - this will show as "Talked to college-advisor.collegexpress.com"!'
+                    : 'Using default Supabase URL - toggle custom domain above to use your branded domain'
                   }
                 </CardDescription>
             </div>
