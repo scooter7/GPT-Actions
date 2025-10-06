@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSupabase } from '@/app/components/AuthProvider';
-import { Copy, Check, Bug, RefreshCw, ExternalLink } from 'lucide-react';
+import { Copy, Check, Bug, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,21 @@ type Gpt = {
 interface GptSettingsTabProps {
   gpt: Gpt;
 }
+
+type EndpointResult = {
+  status?: number;
+  statusText?: string;
+  success: boolean;
+  data?: string;
+  error?: string;
+};
+
+type DiagnosticsResults = {
+  customDomain: Record<string, EndpointResult>;
+  supabase: Record<string, EndpointResult>;
+  dnsInfo: Record<string, any>;
+  recommendations: string[];
+};
 
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
@@ -46,11 +61,11 @@ const getTestSchema = (gptName: string, useCustomDomain = false) => `{
     }
   ],
   "paths": {
-    "/test-tracking": {
+    "/test-custom-domain": {
       "post": {
-        "summary": "Test Connection",
-        "description": "Simple test to verify the connection is working",
-        "operationId": "testTracking",
+        "summary": "Test Custom Domain",
+        "description": "Simple test to verify the custom domain is working",
+        "operationId": "testCustomDomain",
         "x-openai-isConsequential": false,
         "requestBody": {
           "required": false,
@@ -296,9 +311,11 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [isDebugging, setIsDebugging] = useState(false);
   const [manualTestResult, setManualTestResult] = useState<any>(null);
   const [isManualTesting, setIsManualTesting] = useState(false);
-  const [useCustomDomain, setUseCustomDomain] = useState(false);
+  const [useCustomDomain, setUseCustomDomain] = useState(true); // Default to true since they want custom domain
   const [customDomainTest, setCustomDomainTest] = useState<any>(null);
   const [isTestingCustomDomain, setIsTestingCustomDomain] = useState(false);
+  const [domainDiagnostics, setDomainDiagnostics] = useState<DiagnosticsResults | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain);
   const testSchema = getTestSchema(gpt.name, useCustomDomain);
@@ -307,6 +324,112 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleDomainDiagnostics = async () => {
+    setIsDiagnosing(true);
+    setDomainDiagnostics(null);
+
+    try {
+      const customDomain = "college-advisor.collegexpress.com";
+      const supabaseDomain = "qrhafhfqdjcrqsxnkaij.supabase.co";
+      
+      // Test multiple endpoints
+      const endpoints = [
+        '/functions/v1/test-custom-domain',
+        '/functions/v1/track-first-message',
+        '/functions/v1/test-tracking'
+      ];
+
+      const results: DiagnosticsResults = {
+        customDomain: {},
+        supabase: {},
+        dnsInfo: {},
+        recommendations: []
+      };
+
+      // Test each endpoint on both domains
+      for (const endpoint of endpoints) {
+        const customUrl = `https://${customDomain}${endpoint}`;
+        const supabaseUrl = `https://${supabaseDomain}${endpoint}`;
+        
+        // Test custom domain
+        try {
+          const customResponse = await fetch(customUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': bearerToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test: true })
+          });
+          
+          results.customDomain[endpoint] = {
+            status: customResponse.status,
+            statusText: customResponse.statusText,
+            success: customResponse.ok,
+            data: await customResponse.text()
+          };
+        } catch (e) {
+          results.customDomain[endpoint] = {
+            error: e instanceof Error ? e.message : String(e),
+            success: false
+          };
+        }
+
+        // Test supabase domain
+        try {
+          const supabaseResponse = await fetch(supabaseUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': bearerToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test: true })
+          });
+          
+          results.supabase[endpoint] = {
+            status: supabaseResponse.status,
+            statusText: supabaseResponse.statusText,
+            success: supabaseResponse.ok,
+            data: await supabaseResponse.text()
+          };
+        } catch (e) {
+          results.supabase[endpoint] = {
+            error: e instanceof Error ? e.message : String(e),
+            success: false
+          };
+        }
+      }
+
+      // Add recommendations based on results
+      const customDomainWorking = Object.values(results.customDomain).some((result) => result.success);
+      const supabaseWorking = Object.values(results.supabase).some((result) => result.success);
+
+      if (!customDomainWorking && supabaseWorking) {
+        results.recommendations.push("❌ Custom domain is not properly configured to proxy requests to Supabase");
+        results.recommendations.push("✅ Direct Supabase URL works perfectly");
+        results.recommendations.push("🔧 You need to configure your custom domain to forward all /functions/v1/* requests to qrhafhfqdjcrqsxnkaij.supabase.co");
+      }
+
+      if (customDomainWorking) {
+        results.recommendations.push("✅ Custom domain is working!");
+      }
+
+      setDomainDiagnostics(results);
+
+    } catch (e) {
+      setDomainDiagnostics({
+        customDomain: {},
+        supabase: {},
+        dnsInfo: {},
+        recommendations: [],
+        error: e instanceof Error ? e.message : String(e),
+        timestamp: new Date().toISOString()
+      } as any);
+    } finally {
+      setIsDiagnosing(false);
+    }
   };
 
   const handleTestCustomDomain = async () => {
@@ -518,29 +641,73 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card className="border-red-500 border-2">
         <CardHeader>
-          <CardTitle className="text-red-600">🚨 Custom Domain Issue Detected</CardTitle>
+          <CardTitle className="text-red-600 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Custom Domain Configuration Issue
+          </CardTitle>
           <CardDescription>
-            Your GPT is getting empty responses from the custom domain. Let's test both URLs to see what's happening.
+            Your DNS records are propagating correctly, but your custom domain isn't properly forwarding requests to Supabase.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-sm space-y-2">
-            <p><strong>What I can see from your error:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>✅ GPT is correctly using custom domain: <code>college-advisor.collegexpress.com</code></li>
-              <li>❌ Getting empty response: <code>{`{}`}</code></li>
-              <li>❌ ClientResponseError indicates connection/response issue</li>
-            </ul>
-            <p className="mt-4"><strong>Let's test both URLs:</strong></p>
+          <div className="text-sm space-y-3">
+            <div className="bg-yellow-100 p-3 rounded-md text-yellow-800">
+              <p><strong>🔍 What we found:</strong></p>
+              <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
+                <li>✅ DNS records (CNAME/TXT) are propagating correctly</li>
+                <li>❌ Custom domain returns 502 Bad Gateway</li>
+                <li>✅ Direct Supabase URL works perfectly</li>
+                <li>❌ Your domain isn't proxying requests to Supabase</li>
+              </ul>
+            </div>
+            
+            <div className="bg-blue-100 p-3 rounded-md text-blue-800">
+              <p><strong>🔧 What you need to fix:</strong></p>
+              <p className="mt-1">Your custom domain needs to be configured to <strong>proxy/forward</strong> all requests from:</p>
+              <p className="font-mono text-xs mt-1">college-advisor.collegexpress.com/functions/v1/*</p>
+              <p className="mt-1">To:</p>
+              <p className="font-mono text-xs">qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/*</p>
+            </div>
+
             <div className="flex gap-2">
-              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
+              <Button onClick={handleDomainDiagnostics} disabled={isDiagnosing} variant="outline">
                 <Bug className="mr-2 h-4 w-4" />
-                {isTestingCustomDomain ? 'Testing URLs...' : 'Test Custom Domain vs Supabase'}
+                {isDiagnosing ? 'Running Diagnostics...' : 'Run Full Domain Diagnostics'}
+              </Button>
+              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {isTestingCustomDomain ? 'Testing...' : 'Quick Test'}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {domainDiagnostics && (
+        <Card className="border-2 border-purple-500">
+          <CardHeader>
+            <CardTitle className="text-purple-600">🔬 Full Domain Diagnostics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-sm mb-2">Recommendations:</h4>
+                <div className="bg-gray-100 p-3 rounded-md">
+                  {domainDiagnostics.recommendations?.map((rec: string, index: number) => (
+                    <p key={index} className="text-sm">{rec}</p>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Full Test Results:</h4>
+                <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-x-auto">
+                  {JSON.stringify(domainDiagnostics, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {customDomainTest && (
         <Card className="border-2 border-blue-500">
@@ -568,20 +735,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card className="border-green-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-600">✅ Custom Domain Active!</CardTitle>
+          <CardTitle className="text-green-600">🎯 Custom Domain Configuration</CardTitle>
           <CardDescription>
-            Your custom domain <code>college-advisor.collegexpress.com</code> is active and serving traffic.
+            Configure your schemas to use your custom domain once it's working properly.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm space-y-3">
-            <div className="bg-green-100 p-3 rounded-md text-green-800">
-              <p><strong>✅ Domain Status:</strong> Active and serving traffic</p>
-              <p><strong>🌐 Your Domain:</strong> <code>college-advisor.collegexpress.com</code></p>
-            </div>
-            
-            <p><strong>Next Step:</strong> Toggle the switch below to use your custom domain in the schemas:</p>
-            
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -595,15 +755,15 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             
             {useCustomDomain && (
               <div className="bg-blue-100 p-3 rounded-md text-blue-800 text-sm">
-                🎉 <strong>Perfect!</strong> Schemas below now use: <code>college-advisor.collegexpress.com</code>
+                🎉 <strong>Using custom domain!</strong> Schemas below use: <code>college-advisor.collegexpress.com</code>
                 <br />
-                <strong>Result:</strong> Users will see "Talked to college-advisor.collegexpress.com" instead of the long Supabase URL!
+                <strong>⚠️ Note:</strong> This will only work once your domain is properly configured to proxy requests.
               </div>
             )}
             
             {!useCustomDomain && (
               <div className="bg-yellow-100 p-3 rounded-md text-yellow-800 text-sm">
-                ⚠️ <strong>Still using default URL:</strong> Toggle the checkbox above to switch to your custom domain.
+                ⚠️ <strong>Using fallback:</strong> Schemas use direct Supabase URL. This will work immediately but shows the long Supabase URL to users.
               </div>
             )}
           </div>
@@ -667,14 +827,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       <Card className="border-blue-500 border-2">
         <CardHeader>
-          <CardTitle className="text-blue-600">🧪 Test Schema (Use This First)</CardTitle>
+          <CardTitle className="text-blue-600">🧪 Custom Domain Test Schema</CardTitle>
           <CardDescription>
-            Start with this simple test schema to verify your GPT can connect to the tracking system before using the full tracking schema.
+            Use this to test if your custom domain is working before using the full tracking schema.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-4">
-            <p className="text-sm">Copy this simple test schema first to verify connectivity:</p>
+            <p className="text-sm">Test your custom domain with this simple schema:</p>
             <Button variant="outline" onClick={() => handleCopyToClipboard(testSchema, 'Test Schema')}>
               {copied === 'Test Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
               Copy Test Schema
@@ -684,7 +844,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <code>{testSchema}</code>
           </pre>
           <p className="text-xs text-gray-500 mt-2">
-            <strong>Instructions:</strong> Add this schema to your GPT first. Test that your GPT can call the testTracking action successfully. Once this works, replace it with the full tracking schema below.
+            <strong>Instructions:</strong> Add this schema to your GPT and try calling the testCustomDomain action. If it works, your custom domain is properly configured!
           </p>
         </CardContent>
       </Card>
@@ -728,11 +888,11 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>Enhanced Tracking Schema {useCustomDomain ? '(Custom Domain)' : '(Default)'}</CardTitle>
+                <CardTitle>Enhanced Tracking Schema {useCustomDomain ? '(Custom Domain)' : '(Direct Supabase)'}</CardTitle>
                 <CardDescription>
                   {useCustomDomain 
-                    ? 'Using college-advisor.collegexpress.com - this will show as "Talked to college-advisor.collegexpress.com"!'
-                    : 'Using default Supabase URL - toggle custom domain above to use your branded domain'
+                    ? '⚠️ Using college-advisor.collegexpress.com - only use this once your custom domain is working!'
+                    : '✅ Using direct Supabase URL - this will work immediately'
                   }
                 </CardDescription>
             </div>
