@@ -297,6 +297,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [manualTestResult, setManualTestResult] = useState<any>(null);
   const [isManualTesting, setIsManualTesting] = useState(false);
   const [useCustomDomain, setUseCustomDomain] = useState(false);
+  const [customDomainTest, setCustomDomainTest] = useState<any>(null);
+  const [isTestingCustomDomain, setIsTestingCustomDomain] = useState(false);
 
   const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain);
   const testSchema = getTestSchema(gpt.name, useCustomDomain);
@@ -305,6 +307,89 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleTestCustomDomain = async () => {
+    setIsTestingCustomDomain(true);
+    setCustomDomainTest(null);
+
+    try {
+      // Test both URLs directly with fetch
+      const customDomainUrl = "https://college-advisor.collegexpress.com/functions/v1/track-first-message";
+      const supabaseUrl = "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-first-message";
+      
+      const testPayload = {
+        client_id: gpt.client_id,
+        assistant_response: "Test message from dashboard",
+        user_session_id: "dashboard_test_" + Date.now()
+      };
+
+      // Test custom domain
+      let customDomainResult;
+      try {
+        const customResponse = await fetch(customDomainUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': bearerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testPayload)
+        });
+        
+        const customData = await customResponse.text();
+        customDomainResult = {
+          status: customResponse.status,
+          statusText: customResponse.statusText,
+          data: customData,
+          success: customResponse.ok
+        };
+      } catch (e) {
+        customDomainResult = {
+          error: e instanceof Error ? e.message : String(e),
+          success: false
+        };
+      }
+
+      // Test Supabase URL
+      let supabaseResult;
+      try {
+        const supabaseResponse = await fetch(supabaseUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': bearerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testPayload)
+        });
+        
+        const supabaseData = await supabaseResponse.text();
+        supabaseResult = {
+          status: supabaseResponse.status,
+          statusText: supabaseResponse.statusText,
+          data: supabaseData,
+          success: supabaseResponse.ok
+        };
+      } catch (e) {
+        supabaseResult = {
+          error: e instanceof Error ? e.message : String(e),
+          success: false
+        };
+      }
+
+      setCustomDomainTest({
+        customDomain: customDomainResult,
+        supabase: supabaseResult,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (e) {
+      setCustomDomainTest({
+        error: e instanceof Error ? e.message : String(e),
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      setIsTestingCustomDomain(false);
+    }
   };
 
   const handleTestConnection = async () => {
@@ -431,6 +516,56 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
+      <Card className="border-red-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-red-600">🚨 Custom Domain Issue Detected</CardTitle>
+          <CardDescription>
+            Your GPT is getting empty responses from the custom domain. Let's test both URLs to see what's happening.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm space-y-2">
+            <p><strong>What I can see from your error:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-4">
+              <li>✅ GPT is correctly using custom domain: <code>college-advisor.collegexpress.com</code></li>
+              <li>❌ Getting empty response: <code>{`{}`}</code></li>
+              <li>❌ ClientResponseError indicates connection/response issue</li>
+            </ul>
+            <p className="mt-4"><strong>Let's test both URLs:</strong></p>
+            <div className="flex gap-2">
+              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
+                <Bug className="mr-2 h-4 w-4" />
+                {isTestingCustomDomain ? 'Testing URLs...' : 'Test Custom Domain vs Supabase'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {customDomainTest && (
+        <Card className="border-2 border-blue-500">
+          <CardHeader>
+            <CardTitle className="text-blue-600">URL Comparison Test Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-sm">Custom Domain (college-advisor.collegexpress.com):</h4>
+                <div className={`p-3 rounded-md text-xs ${customDomainTest.customDomain?.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <pre>{JSON.stringify(customDomainTest.customDomain, null, 2)}</pre>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">Direct Supabase URL:</h4>
+                <div className={`p-3 rounded-md text-xs ${customDomainTest.supabase?.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <pre>{JSON.stringify(customDomainTest.supabase, null, 2)}</pre>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-green-500 border-2">
         <CardHeader>
           <CardTitle className="text-green-600">✅ Custom Domain Active!</CardTitle>
@@ -475,37 +610,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-yellow-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-yellow-600">⚠️ Tracking Issue Detected</CardTitle>
-          <CardDescription>
-            I can see your GPT is calling the tracking functions, but the JSON is showing in the chat and data isn't being saved properly.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm space-y-2">
-            <p><strong>What I can see:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>✅ Your GPT is calling the tracking functions</li>
-              <li>✅ The JSON data is being sent correctly</li>
-              <li>❌ The JSON is showing in the chat (should be hidden)</li>
-              <li>❌ Data might not be saving to analytics</li>
-            </ul>
-            <p className="mt-4"><strong>Let's debug this:</strong></p>
-            <div className="flex gap-2">
-              <Button onClick={handleManualTrackingTest} disabled={isManualTesting} variant="outline">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {isManualTesting ? 'Testing...' : 'Test Tracking Function'}
-              </Button>
-              <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
-                <Bug className="mr-2 h-4 w-4" />
-                {isDebugging ? 'Debugging...' : 'Check Current Data'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {manualTestResult && (
         <Card className={`border-2 ${manualTestResult.success ? 'border-green-500' : 'border-red-500'}`}>
           <CardHeader>
@@ -532,6 +636,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div className="flex gap-2">
             <Button onClick={handleTestConnection} disabled={isTesting} variant="outline">
               {isTesting ? 'Testing...' : 'Test Connection'}
+            </Button>
+            <Button onClick={handleManualTrackingTest} disabled={isManualTesting} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {isManualTesting ? 'Testing...' : 'Test Tracking Function'}
+            </Button>
+            <Button onClick={handleDebugData} disabled={isDebugging} variant="outline">
+              <Bug className="mr-2 h-4 w-4" />
+              {isDebugging ? 'Debugging...' : 'Check Current Data'}
             </Button>
           </div>
           
