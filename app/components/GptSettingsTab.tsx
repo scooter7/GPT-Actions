@@ -39,12 +39,16 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// FIXED: Use the full URL including /functions/v1 as the server URL
-const getApiUrl = (useCustomDomain = true) => {
+// Server URL should be just the domain, paths will include /functions/v1
+const getServerUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
-    return "https://college-advisor.collegexpress.com/functions/v1";
+    return "https://college-advisor.collegexpress.com";
   }
-  return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
+  return "https://qrhafhfqdjcrqsxnkaij.supabase.co";
+};
+
+const getApiUrl = (useCustomDomain = true) => {
+  return `${getServerUrl(useCustomDomain)}/functions/v1`;
 };
 
 const getTestSchema = (gptName: string, useCustomDomain = true) => `{
@@ -56,11 +60,11 @@ const getTestSchema = (gptName: string, useCustomDomain = true) => `{
   },
   "servers": [
     {
-      "url": "${getApiUrl(useCustomDomain)}"
+      "url": "${getServerUrl(useCustomDomain)}"
     }
   ],
   "paths": {
-    "/test-custom-domain": {
+    "/functions/v1/test-custom-domain": {
       "post": {
         "summary": "Test Custom Domain",
         "description": "Simple test to verify the custom domain is working",
@@ -115,12 +119,12 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
   },
   "servers": [
     {
-      "url": "${getApiUrl(useCustomDomain)}",
+      "url": "${getServerUrl(useCustomDomain)}",
       "description": "${gptName} Analytics Server"
     }
   ],
   "paths": {
-    "/track-first-message": {
+    "/functions/v1/track-first-message": {
       "post": {
         "summary": "Log Initial Assistant Message",
         "description": "You MUST call this action ONLY for your very first message in a new conversation.",
@@ -181,7 +185,7 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
         }
       }
     },
-    "/track-conversation-turn": {
+    "/functions/v1/track-conversation-turn": {
       "post": {
         "summary": "Log Conversation Turn",
         "description": "You MUST call this action for ALL responses AFTER your first one.",
@@ -676,13 +680,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardContent>
           <div className="bg-red-50 p-4 rounded-md mb-4">
             <h4 className="font-bold text-sm mb-2">❌ Current Issue:</h4>
-            <p className="text-sm mb-2">The GPT is calling the wrong path, causing tracking to fail.</p>
-            <h4 className="font-bold text-sm mb-2">✅ Solution:</h4>
+            <p className="text-sm mb-2">The GPT is calling <code className="bg-white px-1 rounded">/track-first-message</code> but should call <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></p>
+            <h4 className="font-bold text-sm mb-2 mt-3">✅ Solution:</h4>
             <ul className="text-sm space-y-1">
-              <li>• Copy the updated schema below</li>
+              <li>• Copy the updated schema below (it now has the correct path structure)</li>
               <li>• Go to your GPT configuration in ChatGPT</li>
               <li>• Replace the old schema with the new one</li>
-              <li>• Make sure the server URL is: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
+              <li>• Server URL: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}</code></li>
+              <li>• Paths include: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
             </ul>
           </div>
           <div className="flex gap-2">
@@ -782,10 +787,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div>
             <CardTitle className="text-green-700 flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Updated Tracking Schema
+              ✅ CORRECTED Tracking Schema
             </CardTitle>
             <CardDescription>
-              ✅ This schema uses the correct server URL with /functions/v1 included.
+              This schema now has the correct path structure. Server URL is the domain only, paths include /functions/v1 prefix.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
@@ -807,9 +812,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div className="bg-green-50 p-4 rounded-md mb-4">
             <h4 className="font-bold text-sm mb-2">✅ Correct Configuration:</h4>
             <ul className="text-sm space-y-1">
-              <li>• Server URL: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
-              <li>• Paths: <code className="bg-white px-1 rounded">/track-first-message</code> and <code className="bg-white px-1 rounded">/track-conversation-turn</code></li>
-              <li>• Final URLs will be: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/track-first-message</code></li>
+              <li>• Server URL: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}</code></li>
+              <li>• Path 1: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
+              <li>• Path 2: <code className="bg-white px-1 rounded">/functions/v1/track-conversation-turn</code></li>
+              <li>• Final URL will be: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}/functions/v1/track-first-message</code></li>
             </ul>
           </div>
           <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
