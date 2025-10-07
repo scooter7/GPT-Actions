@@ -39,7 +39,7 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Use server URL with /functions/v1 to avoid missing prefix in final requests
+// FIXED: Use the full URL including /functions/v1 as the server URL
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
     return "https://college-advisor.collegexpress.com/functions/v1";
@@ -270,7 +270,7 @@ const systemPromptInstruction = `**Critical Analytics Instruction:** Your operat
 **IMPORTANT: Error Handling & Debugging**
 - If any tracking action fails, DO NOT let it break your response to the user
 - Continue with your normal response even if tracking fails
-- If you get an error, try to include the error details in your response for debugging
+- If you get an error about "incorrect server path", the schema needs to be updated with the correct server URL
 - The tracking is for analytics only and should not affect user experience
 
 **IMPORTANT: User Session Tracking**
@@ -282,13 +282,13 @@ const systemPromptInstruction = `**Critical Analytics Instruction:** Your operat
 1. **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
    - Provide your own introductory message in the \`assistant_response\`
    - The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation
-   - If this action fails, continue with your response normally but mention "Debug: First message tracking failed"
+   - If this action fails with a path error, continue normally and mention "Debug: Schema needs update - contact admin"
 
 2. **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
    - You MUST provide the user's most recent message in the \`user_message\` field
    - You MUST provide your own response in the \`assistant_response\` field
    - You MUST include the \`user_session_id\` you received from the first message
-   - If this action fails, continue with your response normally but mention "Debug: Conversation tracking failed"
+   - If this action fails, continue with your response normally
 
 **Session Management:**
 - Each new conversation gets a new session ID
@@ -298,11 +298,7 @@ const systemPromptInstruction = `**Critical Analytics Instruction:** Your operat
 **Error Recovery:**
 - If you lose the session ID, you can call trackFirstMessage again to get a new one
 - Always prioritize helping the user over successful tracking
-- If tracking consistently fails, include error details in your response for debugging
-
-**Debug Mode:**
-- If tracking fails, briefly mention it at the end of your response like: "Debug: Tracking error - [error details]"
-- This helps identify issues without disrupting the user experience
+- If tracking consistently fails with path errors, the schema configuration needs to be updated
 
 This tracking is for analytics purposes and should never interfere with your primary function of helping users.`;
 
@@ -351,6 +347,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
+    setCopied(type);
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -666,30 +663,32 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-500 border-2">
+      <Card className="border-red-500 border-2">
         <CardHeader>
-          <CardTitle className="text-green-700 flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            Schema Configuration
+          <CardTitle className="text-red-700 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            ⚠️ Schema Update Required
           </CardTitle>
           <CardDescription>
-            The schema below uses a server URL that already includes /functions/v1 to ensure correct paths.
+            Your GPT is using an incorrect server path. Please update your schema in ChatGPT with the corrected version below.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-green-50 p-4 rounded-md mb-4">
-            <h4 className="font-bold text-sm mb-2">✅ Schema Structure:</h4>
+          <div className="bg-red-50 p-4 rounded-md mb-4">
+            <h4 className="font-bold text-sm mb-2">❌ Current Issue:</h4>
+            <p className="text-sm mb-2">The GPT is calling the wrong path, causing tracking to fail.</p>
+            <h4 className="font-bold text-sm mb-2">✅ Solution:</h4>
             <ul className="text-sm space-y-1">
-              <li>• Server URL: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
-              <li>• Path: <code className="bg-white px-1 rounded">/track-first-message</code></li>
-              <li>• Path: <code className="bg-white px-1 rounded">/track-conversation-turn</code></li>
-              <li>• Final URLs: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/track-first-message</code></li>
+              <li>• Copy the updated schema below</li>
+              <li>• Go to your GPT configuration in ChatGPT</li>
+              <li>• Replace the old schema with the new one</li>
+              <li>• Make sure the server URL is: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
             </ul>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              {isTestingCustomDomain ? 'Testing Edge Functions...' : 'Test Custom Domain'}
+              {isTestingCustomDomain ? 'Testing...' : 'Test Connection'}
             </Button>
           </div>
         </CardContent>
@@ -698,12 +697,12 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       {customDomainTest && (
         <Card className="border-2 border-blue-500">
           <CardHeader>
-            <CardTitle className="text-blue-600">Domain Test Results</CardTitle>
+            <CardTitle className="text-blue-600">Connection Test Results</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h4 className="font-bold text-sm">Custom Domain (college-advisor.collegexpress.com/functions/v1):</h4>
+                <h4 className="font-bold text-sm">Custom Domain Test:</h4>
                 <div className={`p-3 rounded-md text-xs ${customDomainTest.customDomain?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                   <pre>{JSON.stringify(customDomainTest.customDomain, null, 2)}</pre>
                 </div>
@@ -717,8 +716,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
-                  <p className="font-bold">🎉 Success! Your custom domain with Edge Functions is working perfectly!</p>
-                  <p className="text-sm mt-1">Use this base URL in schemas: https://college-advisor.collegexpress.com/functions/v1</p>
+                  <p className="font-bold">🎉 Success! Your custom domain is working correctly!</p>
+                  <p className="text-sm mt-1">The schema below is configured correctly. Copy it to your GPT.</p>
                 </div>
               )}
             </div>
@@ -733,7 +732,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             Important: API Key Configuration
           </CardTitle>
           <CardDescription>
-            When you update your GPT's schema, you MUST also configure the API key in ChatGPT.
+            After updating your schema, you MUST also configure the API key in ChatGPT.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -778,12 +777,15 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-green-500 border-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Tracking Schema</CardTitle>
+            <CardTitle className="text-green-700 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Updated Tracking Schema
+            </CardTitle>
             <CardDescription>
-              ✅ This schema uses a server URL that includes /functions/v1 with short paths to avoid path issues.
+              ✅ This schema uses the correct server URL with /functions/v1 included.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
@@ -801,6 +803,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               className="rounded"
             />
             <Label htmlFor="custom-domain">Use custom domain in schema</Label>
+          </div>
+          <div className="bg-green-50 p-4 rounded-md mb-4">
+            <h4 className="font-bold text-sm mb-2">✅ Correct Configuration:</h4>
+            <ul className="text-sm space-y-1">
+              <li>• Server URL: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
+              <li>• Paths: <code className="bg-white px-1 rounded">/track-first-message</code> and <code className="bg-white px-1 rounded">/track-conversation-turn</code></li>
+              <li>• Final URLs will be: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/track-first-message</code></li>
+            </ul>
           </div>
           <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
             <code>{getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain)}</code>
