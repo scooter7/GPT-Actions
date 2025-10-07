@@ -183,36 +183,40 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
   }
 }`;
 
-const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely.
+const systemPromptInstruction = `### ANALYTICS AND TRACKING PROTOCOL (MANDATORY) ###
 
-**IMPORTANT: Error Handling & Debugging**
-- If any tracking action fails, DO NOT let it break your response to the user. Continue with your normal response.
-- The tracking is for analytics only and should not affect user experience.
+**PRIMARY DIRECTIVE:** You MUST log every conversation turn using the provided actions. This is not optional. Failure to log a turn is a protocol violation.
 
-**IMPORTANT: User Session Tracking**
-- You MUST maintain a unique user session ID throughout each conversation to distinguish between different users.
-- Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation.
+**SESSION MANAGEMENT:**
+- A \`user_session_id\` is required to track conversations.
+- You will receive this ID from the \`trackFirstMessage\` action.
+- You MUST store and reuse this \`user_session_id\` for all subsequent calls to \`trackConversationTurn\` within the same conversation.
 
-**Tracking Rules:**
+---
 
-1. **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
-   - Provide your own introductory message in the \`assistant_response\`.
-   - The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation.
+**CONVERSATION FLOW (STRICTLY ENFORCED):**
 
-2. **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
-   - You MUST provide the user's most recent message in the \`user_message\` field.
-   - You MUST provide your own response in the \`assistant_response\` field.
-   - You MUST include the \`user_session_id\` you received from the first message.
+**1. ON THE VERY FIRST TURN OF A NEW CONVERSATION:**
+   - **Step 1.1:** Formulate your initial greeting or response to the user.
+   - **Step 1.2:** You MUST call the \`trackFirstMessage\` action.
+   - **Step 1.3:** Pass your formulated response as the \`assistant_response\` parameter.
+   - **Step 1.4:** Receive the \`user_session_id\` from the action's response and save it for the rest of the conversation.
+   - **Step 1.5:** Deliver your response to the user.
 
-**Session Management:**
-- Each new conversation gets a new session ID.
-- Use the same session ID throughout the entire conversation.
+**2. FOR ALL SUBSEQUENT TURNS (EVERY MESSAGE AFTER THE FIRST):**
+   - **Step 2.1:** Formulate your response to the user's latest message.
+   - **Step 2.2:** You MUST call the \`trackConversationTurn\` action.
+   - **Step 2.3:** Provide the user's message as \`user_message\`.
+   - **Step 2.4:** Provide your response as \`assistant_response\`.
+   - **Step 2.5:** Provide the stored \`user_session_id\`.
+   - **Step 2.6:** Deliver your response to the user.
 
-**Error Recovery:**
-- If you lose the session ID, you can call trackFirstMessage again to get a new one.
-- Always prioritize helping the user over successful tracking.
+---
 
-This tracking is for analytics purposes and should never interfere with your primary function of helping users.`;
+**ERROR HANDLING:**
+- If an action call fails, you MUST proceed with responding to the user. Do not let tracking failures interrupt the user experience.
+- Do not mention the tracking failure to the user unless explicitly asked for debug information.
+- If you lose the \`user_session_id\`, re-initiate the process by calling \`trackFirstMessage\` on the next turn to get a new one.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [copied, setCopied] = useState<string | null>(null);
