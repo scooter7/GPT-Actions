@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSupabase } from '@/app/components/AuthProvider';
 import { Copy, Check, Bug, RefreshCw, ExternalLink, AlertTriangle, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -317,13 +317,128 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const [domainDiagnostics, setDomainDiagnostics] = useState<DiagnosticsResults | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
+  // New: track current reachability of custom domain
+  const [customDomainOk, setCustomDomainOk] = useState<boolean | null>(null);
+
   const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain);
   const testSchema = getTestSchema(gpt.name, useCustomDomain);
+
+  useEffect(() => {
+    // Probe the custom domain once when the settings tab loads
+    const probe = async () => {
+      try {
+        const res = await fetch("https://college-advisor.collegexpress.com/functions/v1/test-custom-domain", {
+          method: 'POST',
+          headers: {
+            'Authorization': bearerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ probe: true })
+        });
+        setCustomDomainOk(res.ok);
+        if (res.ok) {
+          setUseCustomDomain(true);
+        }
+      } catch {
+        setCustomDomainOk(false);
+      }
+    };
+    probe();
+  }, []);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleTestCustomDomain = async () => {
+    setIsTestingCustomDomain(true);
+    setCustomDomainTest(null);
+
+    try {
+      // Test both URLs directly with fetch
+      const customDomainUrl = "https://college-advisor.collegexpress.com/functions/v1/track-first-message";
+      const supabaseUrl = "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-first-message";
+      
+      const testPayload = {
+        client_id: gpt.client_id,
+        assistant_response: "Test message from dashboard",
+        user_session_id: "dashboard_test_" + Date.now()
+      };
+
+      // Test custom domain
+      let customDomainResult: any;
+      try {
+        const customResponse = await fetch(customDomainUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': bearerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testPayload)
+        });
+        
+        const customData = await customResponse.text();
+        customDomainResult = {
+          status: customResponse.status,
+          statusText: customResponse.statusText,
+          data: customData,
+          success: customResponse.ok
+        };
+        setCustomDomainOk(customResponse.ok);
+        toast[customResponse.ok ? 'success' : 'error'](
+          customResponse.ok ? 'Custom domain is reachable' : 'Custom domain test failed'
+        );
+      } catch (e) {
+        customDomainResult = {
+          error: e instanceof Error ? e.message : String(e),
+          success: false
+        };
+        setCustomDomainOk(false);
+        toast.error('Custom domain test failed');
+      }
+
+      // Test Supabase URL
+      let supabaseResult: any;
+      try {
+        const supabaseResponse = await fetch(supabaseUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': bearerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testPayload)
+        });
+        
+        const supabaseData = await supabaseResponse.text();
+        supabaseResult = {
+          status: supabaseResponse.status,
+          statusText: supabaseResponse.statusText,
+          data: supabaseData,
+          success: supabaseResponse.ok
+        };
+      } catch (e) {
+        supabaseResult = {
+          error: e instanceof Error ? e.message : String(e),
+          success: false
+        };
+      }
+
+      setCustomDomainTest({
+        customDomain: customDomainResult,
+        supabase: supabaseResult,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (e) {
+      setCustomDomainTest({
+        error: e instanceof Error ? e.message : String(e),
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      setIsTestingCustomDomain(false);
+    }
   };
 
   const handleDomainDiagnostics = async () => {
@@ -406,6 +521,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       const customDomainWorking = Object.values(results.customDomain).some((result) => result.success);
       const supabaseWorking = Object.values(results.supabase).some((result) => result.success);
 
+      if (customDomainWorking) setCustomDomainOk(true);
+
       if (customDomainWorking && supabaseWorking) {
         results.recommendations.push("🎉 Both custom domain and Supabase URL are working perfectly!");
         results.recommendations.push("✅ You can now use your custom domain in your GPT schemas");
@@ -431,89 +548,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       } as any);
     } finally {
       setIsDiagnosing(false);
-    }
-  };
-
-  const handleTestCustomDomain = async () => {
-    setIsTestingCustomDomain(true);
-    setCustomDomainTest(null);
-
-    try {
-      // Test both URLs directly with fetch
-      const customDomainUrl = "https://college-advisor.collegexpress.com/functions/v1/track-first-message";
-      const supabaseUrl = "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-first-message";
-      
-      const testPayload = {
-        client_id: gpt.client_id,
-        assistant_response: "Test message from dashboard",
-        user_session_id: "dashboard_test_" + Date.now()
-      };
-
-      // Test custom domain
-      let customDomainResult;
-      try {
-        const customResponse = await fetch(customDomainUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': bearerToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(testPayload)
-        });
-        
-        const customData = await customResponse.text();
-        customDomainResult = {
-          status: customResponse.status,
-          statusText: customResponse.statusText,
-          data: customData,
-          success: customResponse.ok
-        };
-      } catch (e) {
-        customDomainResult = {
-          error: e instanceof Error ? e.message : String(e),
-          success: false
-        };
-      }
-
-      // Test Supabase URL
-      let supabaseResult;
-      try {
-        const supabaseResponse = await fetch(supabaseUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': bearerToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(testPayload)
-        });
-        
-        const supabaseData = await supabaseResponse.text();
-        supabaseResult = {
-          status: supabaseResponse.status,
-          statusText: supabaseResponse.statusText,
-          data: supabaseData,
-          success: supabaseResponse.ok
-        };
-      } catch (e) {
-        supabaseResult = {
-          error: e instanceof Error ? e.message : String(e),
-          success: false
-        };
-      }
-
-      setCustomDomainTest({
-        customDomain: customDomainResult,
-        supabase: supabaseResult,
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (e) {
-      setCustomDomainTest({
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString()
-      });
-    } finally {
-      setIsTestingCustomDomain(false);
     }
   };
 
@@ -641,43 +675,67 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-red-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-red-600 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            DNS Resolution Failed
-          </CardTitle>
-          <CardDescription>
-            We've detected a `net::ERR_NAME_NOT_RESOLVED` error. This means your custom domain's DNS records are not correctly configured.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm space-y-3">
-            <div className="bg-yellow-100 p-3 rounded-md text-yellow-800">
-              <p><strong>🔍 What this error means:</strong></p>
-              <p className="mt-1">Your browser could not find the server for `college-advisor.collegexpress.com`. This is a fundamental DNS issue, not a problem with Supabase or the application code.</p>
-            </div>
-            
-            <div className="bg-blue-100 p-3 rounded-md text-blue-800">
-              <p><strong>🔧 How to fix it:</strong></p>
-              <p className="mt-1">Please go to your domain provider (where you manage `collegexpress.com`) and ensure you have the following **CNAME record** set up exactly:</p>
-              <div className="bg-gray-100 p-2 rounded mt-2 text-gray-800">
-                <p><strong>Type:</strong> <code className="font-mono">CNAME</code></p>
-                <p><strong>Name/Host:</strong> <code className="font-mono">college-advisor</code></p>
-                <p><strong>Value/Target:</strong> <code className="font-mono">qrhafhfqdjcrqsxnkaij.supabase.co</code></p>
-              </div>
-              <p className="text-xs mt-2">Note: DNS changes can take some time to propagate across the internet.</p>
-            </div>
-
+      {customDomainOk === true && (
+        <Card className="border-green-500 border-2">
+          <CardHeader>
+            <CardTitle className="text-green-700 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Custom Domain Active
+            </CardTitle>
+            <CardDescription>
+              Your custom domain is reachable. We’ll use it in your schemas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="flex gap-2">
               <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {isTestingCustomDomain ? 'Retesting...' : 'Retest Domain'}
+                {isTestingCustomDomain ? 'Testing…' : 'Retest Domain'}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {customDomainOk === false && (
+        <Card className="border-red-500 border-2">
+          <CardHeader>
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              DNS Resolution Failed
+            </CardTitle>
+            <CardDescription>
+              We've detected a `net::ERR_NAME_NOT_RESOLVED` error. This means your custom domain's DNS records are not correctly configured.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm space-y-3">
+              <div className="bg-yellow-100 p-3 rounded-md text-yellow-800">
+                <p><strong>🔍 What this error means:</strong></p>
+                <p className="mt-1">Your browser could not find the server for <code>college-advisor.collegexpress.com</code>. This is a fundamental DNS issue, not a problem with Supabase or the application code.</p>
+              </div>
+              
+              <div className="bg-blue-100 p-3 rounded-md text-blue-800">
+                <p><strong>🔧 How to fix it:</strong></p>
+                <p className="mt-1">Please ensure the following CNAME record is set up:</p>
+                <div className="bg-gray-100 p-2 rounded mt-2 text-gray-800">
+                  <p><strong>Type:</strong> <code className="font-mono">CNAME</code></p>
+                  <p><strong>Name/Host:</strong> <code className="font-mono">college-advisor</code></p>
+                  <p><strong>Value/Target:</strong> <code className="font-mono">qrhafhfqdjcrqsxnkaij.supabase.co</code></p>
+                </div>
+                <p className="text-xs mt-2">Note: DNS changes can take some time to propagate.</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {isTestingCustomDomain ? 'Retesting...' : 'Retest Domain'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {customDomainTest && (
         <Card className="border-2 border-blue-500">
@@ -701,8 +759,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
-                  <p className="font-bold">🎉 Success! Your custom domain is now resolving correctly!</p>
-                  <p className="text-sm mt-1">You can now use the custom domain schemas below with confidence.</p>
+                  <p className="font-bold">🎉 Success! Your custom domain is resolving correctly.</p>
                 </div>
               )}
             </div>
@@ -757,7 +814,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
                   }
                 </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => handleCopyToClipboard(trackingSchema, 'Schema')}>
+            <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
                 {copied === 'Schema' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4" />}
                 Copy
             </Button>
@@ -774,7 +831,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               <Label htmlFor="custom-domain">Use custom domain in schema</Label>
             </div>
             <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
-                <code>{trackingSchema}</code>
+                <code>{getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain)}</code>
             </pre>
         </CardContent>
       </Card>
