@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useSupabase } from '@/app/components/AuthProvider';
-import { Copy, Check, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,94 +20,15 @@ interface GptSettingsTabProps {
   gpt: Gpt;
 }
 
-type EndpointResult = {
-  status?: number;
-  statusText?: string;
-  success: boolean;
-  data?: string;
-  error?: string;
-};
-
-type DiagnosticsResults = {
-  customDomain: Record<string, EndpointResult>;
-  supabase: Record<string, EndpointResult>;
-  dnsInfo: Record<string, any>;
-  recommendations: string[];
-};
-
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Server URL should be just the domain, paths will include /functions/v1
 const getServerUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
     return "https://college-advisor.collegexpress.com";
   }
   return "https://qrhafhfqdjcrqsxnkaij.supabase.co";
 };
-
-const getApiUrl = (useCustomDomain = true) => {
-  return `${getServerUrl(useCustomDomain)}/functions/v1`;
-};
-
-const getTestSchema = (gptName: string, useCustomDomain = true) => `{
-  "openapi": "3.1.0",
-  "info": {
-    "title": "${gptName} Analytics",
-    "description": "Test if the tracking system is working",
-    "version": "1.0.0"
-  },
-  "servers": [
-    {
-      "url": "${getServerUrl(useCustomDomain)}"
-    }
-  ],
-  "paths": {
-    "/functions/v1/test-custom-domain": {
-      "post": {
-        "summary": "Test Custom Domain",
-        "description": "Simple test to verify the custom domain is working",
-        "operationId": "testCustomDomain",
-        "x-openai-isConsequential": false,
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "test_message": {
-                    "type": "string",
-                    "description": "A test message"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Test successful" }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    }
-  },
-  "components": {
-    "schemas": {},
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
-    }
-  }
-}`;
 
 const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = true) => `{
   "openapi": "3.1.0",
@@ -178,9 +98,6 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
                 }
               }
             }
-          },
-          "403": {
-            "description": "Authentication failed - invalid or missing API key"
           }
         }
       }
@@ -242,9 +159,6 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
                 }
               }
             }
-          },
-          "403": {
-            "description": "Authentication failed - invalid or missing API key"
           }
         }
       }
@@ -272,375 +186,43 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
 const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely.
 
 **IMPORTANT: Error Handling & Debugging**
-- If any tracking action fails, DO NOT let it break your response to the user
-- Continue with your normal response even if tracking fails
-- If you get an error about "incorrect server path", the schema needs to be updated with the correct server URL
-- The tracking is for analytics only and should not affect user experience
+- If any tracking action fails, DO NOT let it break your response to the user. Continue with your normal response.
+- The tracking is for analytics only and should not affect user experience.
 
 **IMPORTANT: User Session Tracking**
-- You MUST maintain a unique user session ID throughout each conversation to distinguish between different users
-- Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation
+- You MUST maintain a unique user session ID throughout each conversation to distinguish between different users.
+- Store the user_session_id from the first response and reuse it for all subsequent messages in the same conversation.
 
 **Tracking Rules:**
 
 1. **For Your VERY FIRST Message in a Chat:** You MUST call the \`trackFirstMessage\` action.
-   - Provide your own introductory message in the \`assistant_response\`
-   - The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation
-   - If this action fails with a path error, continue normally and mention "Debug: Schema needs update - contact admin"
+   - Provide your own introductory message in the \`assistant_response\`.
+   - The system will return a \`user_session_id\` - REMEMBER this ID for the entire conversation.
 
 2. **For ALL SUBSEQUENT Messages:** You MUST call the \`trackConversationTurn\` action.
-   - You MUST provide the user's most recent message in the \`user_message\` field
-   - You MUST provide your own response in the \`assistant_response\` field
-   - You MUST include the \`user_session_id\` you received from the first message
-   - If this action fails, continue with your response normally
+   - You MUST provide the user's most recent message in the \`user_message\` field.
+   - You MUST provide your own response in the \`assistant_response\` field.
+   - You MUST include the \`user_session_id\` you received from the first message.
 
 **Session Management:**
-- Each new conversation gets a new session ID
-- Use the same session ID throughout the entire conversation
-- This allows tracking of individual users even when multiple people use the GPT simultaneously
+- Each new conversation gets a new session ID.
+- Use the same session ID throughout the entire conversation.
 
 **Error Recovery:**
-- If you lose the session ID, you can call trackFirstMessage again to get a new one
-- Always prioritize helping the user over successful tracking
-- If tracking consistently fails with path errors, the schema configuration needs to be updated
+- If you lose the session ID, you can call trackFirstMessage again to get a new one.
+- Always prioritize helping the user over successful tracking.
 
 This tracking is for analytics purposes and should never interfere with your primary function of helping users.`;
 
 export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
-  const { supabase } = useSupabase();
   const [copied, setCopied] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
-  const [debugResult, setDebugResult] = useState<any>(null);
-  const [isDebugging, setIsDebugging] = useState(false);
-  const [manualTestResult, setManualTestResult] = useState<any>(null);
-  const [isManualTesting, setIsManualTesting] = useState(false);
   const [useCustomDomain, setUseCustomDomain] = useState(true);
-  const [customDomainTest, setCustomDomainTest] = useState<any>(null);
-  const [isTestingCustomDomain, setIsTestingCustomDomain] = useState(false);
-  const [domainDiagnostics, setDomainDiagnostics] = useState<DiagnosticsResults | null>(null);
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
-
-  // Track reachability of custom domain
-  const [customDomainOk, setCustomDomainOk] = useState<boolean | null>(null);
-
-  const trackingSchema = getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain);
-  const testSchema = getTestSchema(gpt.name, useCustomDomain);
-
-  useEffect(() => {
-    // Probe the custom domain once when the settings tab loads
-    const probe = async () => {
-      try {
-        const res = await fetch("https://college-advisor.collegexpress.com/functions/v1/test-custom-domain", {
-          method: 'POST',
-          headers: {
-            'Authorization': bearerToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ probe: true })
-        });
-        setCustomDomainOk(res.ok);
-        if (res.ok) setUseCustomDomain(true);
-      } catch {
-        setCustomDomainOk(false);
-      }
-    };
-    probe();
-  }, []);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`Copied ${type} to clipboard!`);
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
-  };
-
-  const handleTestCustomDomain = async () => {
-    setIsTestingCustomDomain(true);
-    setCustomDomainTest(null);
-
-    try {
-      const customDomainUrl = `${getApiUrl(true)}/track-first-message`;
-      const supabaseUrl = `${getApiUrl(false)}/track-first-message`;
-      
-      const testPayload = {
-        client_id: gpt.client_id,
-        assistant_response: "Test message from dashboard",
-        user_session_id: "dashboard_test_" + Date.now()
-      };
-
-      // Test custom domain
-      let customDomainResult: any;
-      try {
-        const customResponse = await fetch(customDomainUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': bearerToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(testPayload)
-        });
-        
-        const customData = await customResponse.text();
-        customDomainResult = {
-          status: customResponse.status,
-          statusText: customResponse.statusText,
-          data: customData,
-          success: customResponse.ok
-        };
-        setCustomDomainOk(customResponse.ok);
-        toast[customResponse.ok ? 'success' : 'error'](
-          customResponse.ok ? 'Custom domain is working perfectly!' : 'Custom domain test failed'
-        );
-      } catch (e) {
-        customDomainResult = {
-          error: e instanceof Error ? e.message : String(e),
-          success: false
-        };
-        setCustomDomainOk(false);
-        toast.error('Custom domain test failed');
-      }
-
-      // Test Supabase URL
-      let supabaseResult: any;
-      try {
-        const supabaseResponse = await fetch(supabaseUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': bearerToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(testPayload)
-        });
-        
-        const supabaseData = await supabaseResponse.text();
-        supabaseResult = {
-          status: supabaseResponse.status,
-          statusText: supabaseResponse.statusText,
-          data: supabaseData,
-          success: supabaseResponse.ok
-        };
-      } catch (e) {
-        supabaseResult = {
-          error: e instanceof Error ? e.message : String(e),
-          success: false
-        };
-      }
-
-      setCustomDomainTest({
-        customDomain: customDomainResult,
-        supabase: supabaseResult,
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (e) {
-      setCustomDomainTest({
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString()
-      });
-    } finally {
-      setIsTestingCustomDomain(false);
-    }
-  };
-
-  const handleDomainDiagnostics = async () => {
-    setIsDiagnosing(true);
-    setDomainDiagnostics(null);
-
-    try {
-      const customDomain = "college-advisor.collegexpress.com";
-      const supabaseDomain = "qrhafhfqdjcrqsxnkaij.supabase.co";
-      
-      const functionNames = ['test-custom-domain', 'track-first-message', 'test-tracking'];
-
-      const results: DiagnosticsResults = {
-        customDomain: {},
-        supabase: {},
-        dnsInfo: {},
-        recommendations: []
-      };
-
-      for (const fn of functionNames) {
-        const customUrl = `https://${customDomain}/functions/v1/${fn}`;
-        const supabaseUrl = `https://${supabaseDomain}/functions/v1/${fn}`;
-        
-        try {
-          const customResponse = await fetch(customUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': bearerToken,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ test: true })
-          });
-          
-          results.customDomain[`/functions/v1/${fn}`] = {
-            status: customResponse.status,
-            statusText: customResponse.statusText,
-            success: customResponse.ok,
-            data: await customResponse.text()
-          };
-        } catch (e) {
-          results.customDomain[`/functions/v1/${fn}`] = {
-            error: e instanceof Error ? e.message : String(e),
-            success: false
-          };
-        }
-
-        try {
-          const supabaseResponse = await fetch(supabaseUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': bearerToken,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ test: true })
-          });
-          
-          results.supabase[`/functions/v1/${fn}`] = {
-            status: supabaseResponse.status,
-            statusText: supabaseResponse.statusText,
-            success: supabaseResponse.ok,
-            data: await supabaseResponse.text()
-          };
-        } catch (e) {
-          results.supabase[`/functions/v1/${fn}`] = {
-            error: e instanceof Error ? e.message : String(e),
-            success: false
-          };
-        }
-      }
-
-      const customDomainWorking = Object.values(results.customDomain).some((r) => r.success);
-      const supabaseWorking = Object.values(results.supabase).some((r) => r.success);
-
-      if (customDomainWorking) setCustomDomainOk(true);
-
-      if (customDomainWorking && supabaseWorking) {
-        results.recommendations.push("🎉 Both custom domain and Supabase URL are working perfectly!");
-        results.recommendations.push("✅ You can now use your custom domain in your GPT schemas");
-      } else if (!customDomainWorking && supabaseWorking) {
-        results.recommendations.push("❌ Custom domain is not properly proxying to Supabase functions");
-        results.recommendations.push("✅ Direct Supabase URL works perfectly");
-        results.recommendations.push("🔧 Ensure your custom domain is configured for Edge Functions and reachable over HTTPS");
-      } else if (customDomainWorking && !supabaseWorking) {
-        results.recommendations.push("✅ Custom domain is working");
-        results.recommendations.push("❌ Direct Supabase URL has issues (unusual)");
-      }
-
-      setDomainDiagnostics(results);
-
-    } catch (e) {
-      setDomainDiagnostics({
-        customDomain: {},
-        supabase: {},
-        dnsInfo: {},
-        recommendations: [],
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString()
-      } as any);
-    } finally {
-      setIsDiagnosing(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('test-auth', {
-        body: { client_id: gpt.client_id }
-      });
-
-      if (error) {
-        try {
-          const responseBody = await error.context.json();
-          if (responseBody && responseBody.message) {
-            setTestResult({ success: false, message: `Failed: ${responseBody.message}` });
-          } else {
-            setTestResult({ success: false, message: `Error: ${error.message}` });
-          }
-        } catch {
-          setTestResult({ success: false, message: `Error: ${error.message}` });
-        }
-      } else {
-        setTestResult(data);
-      }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      setTestResult({ success: false, message: `An unexpected error occurred: ${errorMessage}` });
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleManualTrackingTest = async () => {
-    setIsManualTesting(true);
-    setManualTestResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('track-first-message', {
-        body: { 
-          client_id: gpt.client_id,
-          assistant_response: "This is a test first message from the dashboard",
-          user_session_id: "dashboard_test_" + Date.now()
-        }
-      });
-
-      if (error) {
-        setManualTestResult({ success: false, error: error.message, data: null });
-      } else {
-        setManualTestResult({ success: true, error: null, data });
-      }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      setManualTestResult({ success: false, error: errorMessage, data: null });
-    } finally {
-      setIsManualTesting(false);
-    }
-  };
-
-  const handleDebugData = async () => {
-    setIsDebugging(true);
-    setDebugResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('debug-gpt-data', {
-        body: { gpt_id: gpt.id }
-      });
-
-      if (error) {
-        setDebugResult({ error: error.message });
-      } else {
-        setDebugResult(data);
-      }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      setDebugResult({ error: `Debug failed: ${errorMessage}` });
-    } finally {
-      setIsDebugging(false);
-    }
-  };
-
-  const getCurlCommand = (platform: 'macos' | 'windows') => {
-    const apiUrl = getApiUrl(useCustomDomain);
-    const body = JSON.stringify({
-      client_id: gpt.client_id,
-      user_message: "This is a test user message.",
-      assistant_response: "This is a test assistant response.",
-      user_session_id: "user_test_session_123"
-    });
-
-    if (platform === 'windows') {
-      const escapedBody = body.replace(/"/g, '`"');
-      return `curl.exe -X POST "${apiUrl}/track-conversation-turn" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
-    }
-
-    return `curl -X POST '${apiUrl}/track-conversation-turn' \\
-  -H 'Authorization: ${bearerToken}' \\
-  -H 'Content-Type: application/json' \\
-  -d '${body}'`;
   };
 
   return (
@@ -667,87 +249,21 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-red-500 border-2">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-red-700 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            ⚠️ Schema Update Required
-          </CardTitle>
+          <CardTitle>API Key Configuration</CardTitle>
           <CardDescription>
-            Your GPT is using an incorrect server path. Please update your schema in ChatGPT with the corrected version below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-red-50 p-4 rounded-md mb-4">
-            <h4 className="font-bold text-sm mb-2">❌ Current Issue:</h4>
-            <p className="text-sm mb-2">The GPT is calling <code className="bg-white px-1 rounded">/track-first-message</code> but should call <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></p>
-            <h4 className="font-bold text-sm mb-2 mt-3">✅ Solution:</h4>
-            <ul className="text-sm space-y-1">
-              <li>• Copy the updated schema below (it now has the correct path structure)</li>
-              <li>• Go to your GPT configuration in ChatGPT</li>
-              <li>• Replace the old schema with the new one</li>
-              <li>• Server URL: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}</code></li>
-              <li>• Paths include: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
-            </ul>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {isTestingCustomDomain ? 'Testing...' : 'Test Connection'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {customDomainTest && (
-        <Card className="border-2 border-blue-500">
-          <CardHeader>
-            <CardTitle className="text-blue-600">Connection Test Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-bold text-sm">Custom Domain Test:</h4>
-                <div className={`p-3 rounded-md text-xs ${customDomainTest.customDomain?.success ? 'bg-green-100' : 'bg-red-100'}`}>
-                  <pre>{JSON.stringify(customDomainTest.customDomain, null, 2)}</pre>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold text-sm">Direct Supabase URL (for comparison):</h4>
-                <div className={`p-3 rounded-md text-xs ${customDomainTest.supabase?.success ? 'bg-green-100' : 'bg-red-100'}`}>
-                  <pre>{JSON.stringify(customDomainTest.supabase, null, 2)}</pre>
-                </div>
-              </div>
-              
-              {customDomainTest.customDomain?.success && (
-                <div className="bg-green-100 p-3 rounded-md text-green-800">
-                  <p className="font-bold">🎉 Success! Your custom domain is working correctly!</p>
-                  <p className="text-sm mt-1">The schema below is configured correctly. Copy it to your GPT.</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="border-orange-500 border-2">
-        <CardHeader>
-          <CardTitle className="text-orange-700 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Important: API Key Configuration
-          </CardTitle>
-          <CardDescription>
-            After updating your schema, you MUST also configure the API key in ChatGPT.
+            You MUST configure the API key in ChatGPT for the actions to work.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-orange-50 p-4 rounded-md">
+          <div className="bg-gray-50 p-4 rounded-md">
             <h4 className="font-bold text-sm mb-2">Steps to Configure API Key in ChatGPT:</h4>
             <ol className="list-decimal list-inside text-sm space-y-1">
-              <li>Go to your GPT's configuration in ChatGPT</li>
-              <li>In the "Actions" section, after importing your schema</li>
-              <li>Click on "Authentication" → "API Key"</li>
-              <li>Set "Auth Type" to "Bearer"</li>
+              <li>Go to your GPT's configuration in ChatGPT.</li>
+              <li>In the "Actions" section, after importing your schema.</li>
+              <li>Click on "Authentication" → "API Key".</li>
+              <li>Set "Auth Type" to "Bearer".</li>
               <li>Paste this full token in the "API Key" field:</li>
             </ol>
           </div>
@@ -782,15 +298,12 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-500 border-2">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-green-700 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              ✅ CORRECTED Tracking Schema
-            </CardTitle>
+            <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
-              This schema now has the correct path structure. Server URL is the domain only, paths include /functions/v1 prefix.
+              Copy this schema into your GPT's action configuration.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
@@ -807,15 +320,13 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               onChange={(e) => setUseCustomDomain(e.target.checked)}
               className="rounded"
             />
-            <Label htmlFor="custom-domain">Use custom domain in schema</Label>
+            <Label htmlFor="custom-domain">Use custom domain in schema (Recommended)</Label>
           </div>
-          <div className="bg-green-50 p-4 rounded-md mb-4">
-            <h4 className="font-bold text-sm mb-2">✅ Correct Configuration:</h4>
+          <div className="bg-gray-50 p-4 rounded-md mb-4">
+            <h4 className="font-bold text-sm mb-2">Configuration:</h4>
             <ul className="text-sm space-y-1">
               <li>• Server URL: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}</code></li>
-              <li>• Path 1: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
-              <li>• Path 2: <code className="bg-white px-1 rounded">/functions/v1/track-conversation-turn</code></li>
-              <li>• Final URL will be: <code className="bg-white px-1 rounded">{getServerUrl(useCustomDomain)}/functions/v1/track-first-message</code></li>
+              <li>• Path: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
             </ul>
           </div>
           <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-x-auto">
