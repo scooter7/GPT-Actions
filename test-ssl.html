@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSL Test</title>
+</head>
+<body>
+    <h1>SSL Certificate Test</h1>
+    <p>Open browser console and check the results:</p>
+    <script>
+        // Test SSL certificate
+        fetch('https://college-advisor.collegexpress.com/test-custom-domain', {
+            method: 'OPTIONS'
+        })
+        .then(response => {
+            console.log('SSL Test - Status:', response.status);
+            console.log('SSL Test - Headers:', [...response.headers.entries()]);
+        })
+        .catch(error => {
+            console.error('SSL Test - Error:', error);
+        });
+    </script>
+</body>
+</html>
