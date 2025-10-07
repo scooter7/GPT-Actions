@@ -95,6 +95,7 @@ const getTestSchema = (gptName: string, useCustomDomain = true) => `{
     }
   },
   "components": {
+    "schemas": {},
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
@@ -252,6 +253,7 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
     }
   ],
   "components": {
+    "schemas": {},
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
