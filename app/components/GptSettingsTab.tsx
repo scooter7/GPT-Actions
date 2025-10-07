@@ -39,10 +39,10 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Custom domain uses the root path since ChatGPT automatically adds /functions/v1
+// Use the full functions base path explicitly
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
-    return "https://college-advisor.collegexpress.com";
+    return "https://college-advisor.collegexpress.com/functions/v1";
   }
   return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
 };
@@ -450,7 +450,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
       const customDomain = "college-advisor.collegexpress.com";
       const supabaseDomain = "qrhafhfqdjcrqsxnkaij.supabase.co";
       
-      // Function names to test
       const functionNames = ['test-custom-domain', 'track-first-message', 'test-tracking'];
 
       const results: DiagnosticsResults = {
@@ -460,12 +459,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         recommendations: []
       };
 
-      // Test each function on both domains with correct paths
       for (const fn of functionNames) {
         const customUrl = `https://${customDomain}/functions/v1/${fn}`;
         const supabaseUrl = `https://${supabaseDomain}/functions/v1/${fn}`;
         
-        // Test custom domain
         try {
           const customResponse = await fetch(customUrl, {
             method: 'POST',
@@ -489,7 +486,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           };
         }
 
-        // Test supabase domain
         try {
           const supabaseResponse = await fetch(supabaseUrl, {
             method: 'POST',
@@ -514,7 +510,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         }
       }
 
-      // Recommendations
       const customDomainWorking = Object.values(results.customDomain).some((r) => r.success);
       const supabaseWorking = Object.values(results.supabase).some((r) => r.success);
 
@@ -628,7 +623,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   };
 
   const getCurlCommand = (platform: 'macos' | 'windows') => {
-    const apiUrl = useCustomDomain ? "https://college-advisor.collegexpress.com/functions/v1" : "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
+    const apiUrl = getApiUrl(useCustomDomain);
     const body = JSON.stringify({
       client_id: gpt.client_id,
       user_message: "This is a test user message.",
@@ -678,7 +673,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             Custom Domain Ready to Test
           </CardTitle>
           <CardDescription>
-            Your domain is active in Supabase. Let's test the Edge Functions path.
+            Your domain is active in Supabase. We'll test the Edge Functions path with the required /functions/v1 prefix.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -714,7 +709,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
                   <p className="font-bold">🎉 Success! Your custom domain with Edge Functions is working perfectly!</p>
-                  <p className="text-sm mt-1">You can now use your custom domain in your GPT schemas.</p>
+                  <p className="text-sm mt-1">Use this base URL in schemas: https://college-advisor.collegexpress.com/functions/v1</p>
                 </div>
               )}
             </div>
@@ -740,7 +735,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               <li>In the "Actions" section, after importing your schema</li>
               <li>Click on "Authentication" → "API Key"</li>
               <li>Set "Auth Type" to "Bearer"</li>
-              <li>Paste this **full token** in the "API Key" field:</li>
+              <li>Paste this full token in the "API Key" field:</li>
             </ol>
           </div>
           <div>
@@ -780,8 +775,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
               {useCustomDomain 
-                ? 'Using your custom domain. ChatGPT will automatically add /functions/v1 to the path.'
-                : 'Using the direct Supabase URL as a fallback.'
+                ? 'Using your custom domain with the required /functions/v1 prefix.'
+                : 'Using the direct Supabase URL.'
               }
             </CardDescription>
           </div>
