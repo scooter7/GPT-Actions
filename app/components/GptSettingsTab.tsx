@@ -39,7 +39,7 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Use the full functions base path explicitly
+// Always use the correct /functions/v1 path
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
     return "https://college-advisor.collegexpress.com/functions/v1";
@@ -670,10 +670,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader>
           <CardTitle className="text-green-700 flex items-center gap-2">
             <CheckCircle className="h-5 w-5" />
-            Custom Domain Ready to Test
+            Custom Domain Ready
           </CardTitle>
           <CardDescription>
-            Your domain is active in Supabase. We'll test the Edge Functions path with the required /functions/v1 prefix.
+            Your domain is configured. The schema below uses the correct /functions/v1 path.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -774,10 +774,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div>
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
-              {useCustomDomain 
-                ? 'Using your custom domain with the required /functions/v1 prefix.'
-                : 'Using the direct Supabase URL.'
-              }
+              ✅ This schema uses the correct /functions/v1 path for your custom domain.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
