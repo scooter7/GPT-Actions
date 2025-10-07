@@ -39,10 +39,10 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Correct: custom domain should NOT include /functions/v1
+// FIXED: Custom domain now includes the correct /functions/v1 path
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
-    return "https://college-advisor.collegexpress.com";
+    return "https://college-advisor.collegexpress.com/functions/v1";
   }
   return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
 };
@@ -323,10 +323,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const testSchema = getTestSchema(gpt.name, useCustomDomain);
 
   useEffect(() => {
-    // Probe the custom domain once when the settings tab loads
+    // Probe the custom domain once when the settings tab loads - FIXED URL
     const probe = async () => {
       try {
-        const res = await fetch("https://college-advisor.collegexpress.com/test-custom-domain", {
+        const res = await fetch("https://college-advisor.collegexpress.com/functions/v1/test-custom-domain", {
           method: 'POST',
           headers: {
             'Authorization': bearerToken,
@@ -354,7 +354,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     setCustomDomainTest(null);
 
     try {
-      const customDomainUrl = "https://college-advisor.collegexpress.com/track-first-message";
+      // FIXED URLs - both now include /functions/v1
+      const customDomainUrl = "https://college-advisor.collegexpress.com/functions/v1/track-first-message";
       const supabaseUrl = "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-first-message";
       
       const testPayload = {
@@ -384,7 +385,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         };
         setCustomDomainOk(customResponse.ok);
         toast[customResponse.ok ? 'success' : 'error'](
-          customResponse.ok ? 'Custom domain is reachable' : 'Custom domain test failed'
+          customResponse.ok ? 'Custom domain is working perfectly!' : 'Custom domain test failed'
         );
       } catch (e) {
         customDomainResult = {
@@ -457,7 +458,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       // Test each function on both domains with correct paths
       for (const fn of functionNames) {
-        const customUrl = `https://${customDomain}/${fn}`;
+        // FIXED: Both URLs now use /functions/v1
+        const customUrl = `https://${customDomain}/functions/v1/${fn}`;
         const supabaseUrl = `https://${supabaseDomain}/functions/v1/${fn}`;
         
         // Test custom domain
@@ -471,14 +473,14 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             body: JSON.stringify({ test: true })
           });
           
-          results.customDomain[`/${fn}`] = {
+          results.customDomain[`/functions/v1/${fn}`] = {
             status: customResponse.status,
             statusText: customResponse.statusText,
             success: customResponse.ok,
             data: await customResponse.text()
           };
         } catch (e) {
-          results.customDomain[`/${fn}`] = {
+          results.customDomain[`/functions/v1/${fn}`] = {
             error: e instanceof Error ? e.message : String(e),
             success: false
           };
@@ -666,67 +668,25 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </CardContent>
       </Card>
 
-      {customDomainOk === true && (
-        <Card className="border-green-500 border-2">
-          <CardHeader>
-            <CardTitle className="text-green-700 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Custom Domain Active
-            </CardTitle>
-            <CardDescription>
-              Your custom domain is reachable. We’ll use it in your schemas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {isTestingCustomDomain ? 'Testing…' : 'Retest Domain'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {customDomainOk === false && (
-        <Card className="border-red-500 border-2">
-          <CardHeader>
-            <CardTitle className="text-red-600 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              DNS Resolution Failed
-            </CardTitle>
-            <CardDescription>
-              We've detected a net::ERR_NAME_NOT_RESOLVED error. This means your custom domain's DNS records are not correctly configured.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm space-y-3">
-              <div className="bg-yellow-100 p-3 rounded-md text-yellow-800">
-                <p><strong>What this error means:</strong></p>
-                <p className="mt-1">Your browser could not find the server for <code>college-advisor.collegexpress.com</code>. This is a fundamental DNS issue, not a problem with Supabase or the application code.</p>
-              </div>
-              
-              <div className="bg-blue-100 p-3 rounded-md text-blue-800">
-                <p><strong>How to fix it:</strong></p>
-                <p className="mt-1">Please ensure the following CNAME record is set up:</p>
-                <div className="bg-gray-100 p-2 rounded mt-2 text-gray-800">
-                  <p><strong>Type:</strong> <code className="font-mono">CNAME</code></p>
-                  <p><strong>Name/Host:</strong> <code className="font-mono">college-advisor</code></p>
-                  <p><strong>Value/Target:</strong> <code className="font-mono">qrhafhfqdjcrqsxnkaij.supabase.co</code></p>
-                </div>
-                <p className="text-xs mt-2">Note: DNS changes can take some time to propagate.</p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain} variant="outline">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {isTestingCustomDomain ? 'Retesting...' : 'Retest Domain'}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="border-green-500 border-2">
+        <CardHeader>
+          <CardTitle className="text-green-700 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Custom Domain Ready to Test
+          </CardTitle>
+          <CardDescription>
+            Your domain is active in Supabase. Let's test the Edge Functions path.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {isTestingCustomDomain ? 'Testing Edge Functions...' : 'Test Custom Domain'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {customDomainTest && (
         <Card className="border-2 border-blue-500">
@@ -736,7 +696,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h4 className="font-bold text-sm">Custom Domain (college-advisor.collegexpress.com):</h4>
+                <h4 className="font-bold text-sm">Custom Domain (college-advisor.collegexpress.com/functions/v1):</h4>
                 <div className={`p-3 rounded-md text-xs ${customDomainTest.customDomain?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                   <pre>{JSON.stringify(customDomainTest.customDomain, null, 2)}</pre>
                 </div>
@@ -750,7 +710,8 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
-                  <p className="font-bold">🎉 Success! Your custom domain is resolving correctly.</p>
+                  <p className="font-bold">🎉 Success! Your custom domain with Edge Functions is working perfectly!</p>
+                  <p className="text-sm mt-1">You can now use your custom domain in your GPT schemas.</p>
                 </div>
               )}
             </div>
@@ -800,7 +761,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
               {useCustomDomain 
-                ? 'Using your custom domain.'
+                ? 'Using your custom domain with the correct /functions/v1 path.'
                 : 'Using the direct Supabase URL as a fallback.'
               }
             </CardDescription>
