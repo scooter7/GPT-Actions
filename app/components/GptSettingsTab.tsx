@@ -740,18 +740,18 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               <li>In the "Actions" section, after importing your schema</li>
               <li>Click on "Authentication" → "API Key"</li>
               <li>Set "Auth Type" to "Bearer"</li>
-              <li>Paste this token in the "API Key" field:</li>
+              <li>Paste this **full token** in the "API Key" field:</li>
             </ol>
           </div>
           <div>
-            <Label htmlFor="auth-token">API Key (copy this exactly)</Label>
+            <Label htmlFor="auth-token">API Key (copy this full token)</Label>
             <div className="flex items-center gap-2">
-              <Input id="auth-token" value={anonKey} readOnly className="font-mono text-xs"/>
-              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(anonKey, 'API Key')}>
+              <Input id="auth-token" value={bearerToken} readOnly className="font-mono text-xs"/>
+              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(bearerToken, 'API Key')}>
                 {copied === 'API Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-gray-500 mt-1">⚠️ Do NOT include "Bearer " prefix - ChatGPT adds it automatically</p>
+            <p className="text-xs text-gray-500 mt-1">Paste this entire string, including "Bearer ", into the API Key field.</p>
           </div>
         </CardContent>
       </Card>
