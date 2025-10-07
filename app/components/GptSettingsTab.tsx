@@ -39,10 +39,10 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// FIXED: Custom domain now includes the correct /functions/v1 path
+// Custom domain uses the root path since ChatGPT automatically adds /functions/v1
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
-    return "https://college-advisor.collegexpress.com/functions/v1";
+    return "https://college-advisor.collegexpress.com";
   }
   return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
 };
@@ -85,7 +85,12 @@ const getTestSchema = (gptName: string, useCustomDomain = true) => `{
         },
         "responses": {
           "200": { "description": "Test successful" }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -93,15 +98,11 @@ const getTestSchema = (gptName: string, useCustomDomain = true) => `{
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "scheme": "bearer"
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
-  },
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ]
+  }
 }`;
 
 const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = true) => `{
@@ -109,22 +110,12 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
   "info": {
     "title": "${gptName}",
     "description": "Analytics and conversation tracking",
-    "version": "1.0.0",
-    "x-logo": {
-      "url": "https://example.com/logo.png"
-    }
+    "version": "1.0.0"
   },
   "servers": [
     {
       "url": "${getApiUrl(useCustomDomain)}",
-      "description": "${gptName}"
-    }
-  ],
-  "x-origin": [
-    {
-      "url": "${gptName}",
-      "format": "openapi",
-      "version": "3.1.0"
+      "description": "${gptName} Analytics Server"
     }
   ],
   "paths": {
@@ -135,6 +126,11 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
         "operationId": "trackFirstMessage",
         "x-openai-isConsequential": false,
         "tags": ["${gptName}"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -177,6 +173,9 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
                 }
               }
             }
+          },
+          "403": {
+            "description": "Authentication failed - invalid or missing API key"
           }
         }
       }
@@ -188,6 +187,11 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
         "operationId": "trackConversationTurn",
         "x-openai-isConsequential": false,
         "tags": ["${gptName}"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -233,6 +237,9 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
                 }
               }
             }
+          },
+          "403": {
+            "description": "Authentication failed - invalid or missing API key"
           }
         }
       }
@@ -245,19 +252,15 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
     }
   ],
   "components": {
-    "schemas": {},
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "scheme": "bearer"
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your Supabase anon key with Bearer prefix"
       }
     }
-  },
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ]
+  }
 }`;
 
 const systemPromptInstruction = `**Critical Analytics Instruction:** Your operation depends on logging every conversation turn using specific actions. You must follow these rules precisely.
@@ -323,7 +326,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   const testSchema = getTestSchema(gpt.name, useCustomDomain);
 
   useEffect(() => {
-    // Probe the custom domain once when the settings tab loads - FIXED URL
+    // Probe the custom domain once when the settings tab loads
     const probe = async () => {
       try {
         const res = await fetch("https://college-advisor.collegexpress.com/functions/v1/test-custom-domain", {
@@ -354,7 +357,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
     setCustomDomainTest(null);
 
     try {
-      // FIXED URLs - both now include /functions/v1
       const customDomainUrl = "https://college-advisor.collegexpress.com/functions/v1/track-first-message";
       const supabaseUrl = "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1/track-first-message";
       
@@ -458,7 +460,6 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
       // Test each function on both domains with correct paths
       for (const fn of functionNames) {
-        // FIXED: Both URLs now use /functions/v1
         const customUrl = `https://${customDomain}/functions/v1/${fn}`;
         const supabaseUrl = `https://${supabaseDomain}/functions/v1/${fn}`;
         
@@ -625,7 +626,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   };
 
   const getCurlCommand = (platform: 'macos' | 'windows') => {
-    const apiUrl = getApiUrl(useCustomDomain);
+    const apiUrl = useCustomDomain ? "https://college-advisor.collegexpress.com/functions/v1" : "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
     const body = JSON.stringify({
       client_id: gpt.client_id,
       user_message: "This is a test user message.",
@@ -719,20 +720,36 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         </Card>
       )}
 
-      <Card>
+      <Card className="border-orange-500 border-2">
         <CardHeader>
-          <CardTitle>Authorization Token</CardTitle>
-          <CardDescription>This token authenticates your requests to the tracking service.</CardDescription>
+          <CardTitle className="text-orange-700 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Important: API Key Configuration
+          </CardTitle>
+          <CardDescription>
+            When you update your GPT's schema, you MUST also configure the API key in ChatGPT.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="bg-orange-50 p-4 rounded-md">
+            <h4 className="font-bold text-sm mb-2">Steps to Configure API Key in ChatGPT:</h4>
+            <ol className="list-decimal list-inside text-sm space-y-1">
+              <li>Go to your GPT's configuration in ChatGPT</li>
+              <li>In the "Actions" section, after importing your schema</li>
+              <li>Click on "Authentication" → "API Key"</li>
+              <li>Set "Auth Type" to "Bearer"</li>
+              <li>Paste this token in the "API Key" field:</li>
+            </ol>
+          </div>
           <div>
-            <Label htmlFor="auth-token">Token (includes "Bearer " prefix)</Label>
+            <Label htmlFor="auth-token">API Key (copy this exactly)</Label>
             <div className="flex items-center gap-2">
-              <Input id="auth-token" value={bearerToken} readOnly className="font-mono text-xs"/>
-              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(bearerToken, 'Authorization Token')}>
-                {copied === 'Authorization Token' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <Input id="auth-token" value={anonKey} readOnly className="font-mono text-xs"/>
+              <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(anonKey, 'API Key')}>
+                {copied === 'API Key' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mt-1">⚠️ Do NOT include "Bearer " prefix - ChatGPT adds it automatically</p>
           </div>
         </CardContent>
       </Card>
@@ -761,7 +778,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
               {useCustomDomain 
-                ? 'Using your custom domain with the correct /functions/v1 path.'
+                ? 'Using your custom domain. ChatGPT will automatically add /functions/v1 to the path.'
                 : 'Using the direct Supabase URL as a fallback.'
               }
             </CardDescription>
