@@ -39,12 +39,12 @@ type DiagnosticsResults = {
 const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyaGFmaGZxZGpjcnFzeG5rYWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MDg5NjksImV4cCI6MjA2OTk4NDk2OX0.ULM57AAiMHaZpiQW9q5VvgA3X03zMN3Od4nOSeo-SQo";
 const bearerToken = `Bearer ${anonKey}`;
 
-// Always use the correct /functions/v1 path
+// Use the base domain without /functions/v1 and put the full path in the OpenAPI paths
 const getApiUrl = (useCustomDomain = true) => {
   if (useCustomDomain) {
-    return "https://college-advisor.collegexpress.com/functions/v1";
+    return "https://college-advisor.collegexpress.com";
   }
-  return "https://qrhafhfqdjcrqsxnkaij.supabase.co/functions/v1";
+  return "https://qrhafhfqdjcrqsxnkaij.supabase.co";
 };
 
 const getTestSchema = (gptName: string, useCustomDomain = true) => `{
@@ -60,7 +60,7 @@ const getTestSchema = (gptName: string, useCustomDomain = true) => `{
     }
   ],
   "paths": {
-    "/test-custom-domain": {
+    "/functions/v1/test-custom-domain": {
       "post": {
         "summary": "Test Custom Domain",
         "description": "Simple test to verify the custom domain is working",
@@ -120,7 +120,7 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
     }
   ],
   "paths": {
-    "/track-first-message": {
+    "/functions/v1/track-first-message": {
       "post": {
         "summary": "Log Initial Assistant Message",
         "description": "You MUST call this action ONLY for your very first message in a new conversation.",
@@ -181,7 +181,7 @@ const getTrackingSchema = (clientId: string, gptName: string, useCustomDomain = 
         }
       }
     },
-    "/track-conversation-turn": {
+    "/functions/v1/track-conversation-turn": {
       "post": {
         "summary": "Log Conversation Turn",
         "description": "You MUST call this action for ALL responses AFTER your first one.",
@@ -623,7 +623,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
   };
 
   const getCurlCommand = (platform: 'macos' | 'windows') => {
-    const apiUrl = getApiUrl(useCustomDomain);
+    const fullUrl = `${getApiUrl(useCustomDomain)}/functions/v1/track-conversation-turn`;
     const body = JSON.stringify({
       client_id: gpt.client_id,
       user_message: "This is a test user message.",
@@ -633,10 +633,10 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
 
     if (platform === 'windows') {
       const escapedBody = body.replace(/"/g, '`"');
-      return `curl.exe -X POST "${apiUrl}/track-conversation-turn" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
+      return `curl.exe -X POST "${fullUrl}" -H "Authorization: ${bearerToken}" -H "Content-Type: application/json" -d "${escapedBody}"`;
     }
 
-    return `curl -X POST '${apiUrl}/track-conversation-turn' \\
+    return `curl -X POST '${fullUrl}' \\
   -H 'Authorization: ${bearerToken}' \\
   -H 'Content-Type: application/json' \\
   -d '${body}'`;
@@ -673,7 +673,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             Schema Configuration
           </CardTitle>
           <CardDescription>
-            The schema below is correctly configured with server URL: {getApiUrl(useCustomDomain)}
+            The schema below uses full paths to ensure ChatGPT constructs URLs correctly.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -681,9 +681,9 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
             <h4 className="font-bold text-sm mb-2">✅ Schema Structure:</h4>
             <ul className="text-sm space-y-1">
               <li>• Server URL: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
-              <li>• Path: <code className="bg-white px-1 rounded">/track-first-message</code></li>
-              <li>• Path: <code className="bg-white px-1 rounded">/track-conversation-turn</code></li>
-              <li>• Final URLs will be: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/track-first-message</code></li>
+              <li>• Path: <code className="bg-white px-1 rounded">/functions/v1/track-first-message</code></li>
+              <li>• Path: <code className="bg-white px-1 rounded">/functions/v1/track-conversation-turn</code></li>
+              <li>• Final URLs: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/functions/v1/track-first-message</code></li>
             </ul>
           </div>
           <div className="flex gap-2">
@@ -718,7 +718,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
               {customDomainTest.customDomain?.success && (
                 <div className="bg-green-100 p-3 rounded-md text-green-800">
                   <p className="font-bold">🎉 Success! Your custom domain with Edge Functions is working perfectly!</p>
-                  <p className="text-sm mt-1">Use this base URL in schemas: https://college-advisor.collegexpress.com/functions/v1</p>
+                  <p className="text-sm mt-1">Use this base URL in schemas: https://college-advisor.collegexpress.com</p>
                 </div>
               )}
             </div>
@@ -783,7 +783,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div>
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
-              ✅ This schema is correctly configured with the proper server URL and paths.
+              ✅ This schema uses full paths to ensure ChatGPT constructs the correct URLs.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
