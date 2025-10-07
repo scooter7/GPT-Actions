@@ -670,13 +670,22 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
         <CardHeader>
           <CardTitle className="text-green-700 flex items-center gap-2">
             <CheckCircle className="h-5 w-5" />
-            Custom Domain Ready
+            Schema Configuration
           </CardTitle>
           <CardDescription>
-            Your domain is configured. The schema below uses the correct /functions/v1 path.
+            The schema below is correctly configured with server URL: {getApiUrl(useCustomDomain)}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="bg-green-50 p-4 rounded-md mb-4">
+            <h4 className="font-bold text-sm mb-2">✅ Schema Structure:</h4>
+            <ul className="text-sm space-y-1">
+              <li>• Server URL: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}</code></li>
+              <li>• Path: <code className="bg-white px-1 rounded">/track-first-message</code></li>
+              <li>• Path: <code className="bg-white px-1 rounded">/track-conversation-turn</code></li>
+              <li>• Final URLs will be: <code className="bg-white px-1 rounded">{getApiUrl(useCustomDomain)}/track-first-message</code></li>
+            </ul>
+          </div>
           <div className="flex gap-2">
             <Button onClick={handleTestCustomDomain} disabled={isTestingCustomDomain}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -774,7 +783,7 @@ export default function GptSettingsTab({ gpt }: GptSettingsTabProps) {
           <div>
             <CardTitle>Tracking Schema</CardTitle>
             <CardDescription>
-              ✅ This schema uses the correct /functions/v1 path for your custom domain.
+              ✅ This schema is correctly configured with the proper server URL and paths.
             </CardDescription>
           </div>
           <Button variant="outline" onClick={() => handleCopyToClipboard(getTrackingSchema(gpt.client_id, gpt.name, useCustomDomain), 'Schema')}>
